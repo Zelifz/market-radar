@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fikir Havuzu — Türkiye Pazar Radarı</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #08080f;
+      --surface:   #111120;
+      --surface2:  #18182c;
+      --border:    #252540;
+      --accent:    #7c6df0;
+      --accent2:   #3ecfb8;
+      --text:      #e4e4f0;
+      --muted:     #7878a0;
+      --error:     #f06d7c;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(160deg, #0e0820 0%, #080f20 60%, #080808 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 28px 20px 24px;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 1.9rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent) 30%, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-sub {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Main ── */
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 36px 20px 60px;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      padding: 9px 18px;
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-family: inherit;
+      transition: border-color 0.18s, color 0.18s, background 0.18s;
+    }
+
+    .tab:hover { border-color: var(--accent); color: var(--text); }
+
+    .tab.active {
+      background: linear-gradient(135deg, #5c4de8, #4a3cc8);
+      border-color: transparent;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* ── Input card ── */
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.97rem;
+      resize: vertical;
+      transition: border-color 0.18s;
+      line-height: 1.55;
+    }
+
+    textarea:focus { outline: none; border-color: var(--accent); }
+    textarea::placeholder { color: var(--muted); }
+
+    .input-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      gap: 12px;
+    }
+
+    .hint { font-size: 0.78rem; color: var(--muted); }
+
+    .submit-btn {
+      padding: 11px 26px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: opacity 0.18s, transform 0.12s;
+    }
+
+    .submit-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ── Examples ── */
+    .examples { margin-bottom: 32px; }
+
+    .examples-title {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+
+    .examples-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .chip {
+      padding: 7px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.18s, color 0.18s;
+    }
+
+    .chip:hover { border-color: var(--accent2); color: var(--text); }
+
+    /* ── Loading ── */
+    .loading {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .loading.on { display: flex; }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .dots { display: flex; gap: 4px; }
+
+    .dot {
+      width: 5px;
+      height: 5px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 80%, 100% { transform: scale(0.55); opacity: 0.35; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Output ── */
+    .output-section { display: none; }
+    .output-section.on { display: block; }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .output-badge {
+      font-size: 0.82rem;
+      color: var(--muted);
+      padding: 4px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+
+    .output-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 30px;
+    }
+
+    /* ── Markdown ── */
+    .md h1, .md h2, .md h3, .md h4 { margin: 1.4em 0 0.5em; }
+    .md h2 { font-size: 1.15rem; color: var(--accent); }
+    .md h3 { font-size: 1rem; color: var(--accent2); }
+    .md h4 { font-size: 0.95rem; color: var(--text); }
+    .md p { margin-bottom: 0.9em; }
+    .md ul, .md ol { margin: 0.7em 0 1em 1.4em; }
+    .md li { margin-bottom: 0.35em; }
+    .md strong { color: #fff; font-weight: 600; }
+    .md em { color: #b0b0cc; }
+    .md code {
+      background: var(--surface2);
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 0.88em;
+      color: var(--accent2);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .md pre {
+      background: var(--surface2);
+      padding: 16px;
+      border-radius: 10px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+    .md pre code { background: none; padding: 0; }
+    .md blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 16px;
+      margin: 1em 0;
+      color: var(--muted);
+    }
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 1.4em 0; }
+    .md a { color: var(--accent2); text-decoration: underline; }
+
+    /* Streaming cursor */
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      margin-left: 1px;
+      animation: blink 0.65s step-end infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Error */
+    .err {
+      color: var(--error);
+      background: rgba(240,109,124,0.08);
+      border: 1px solid rgba(240,109,124,0.25);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 0.9rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 560px) {
+      .tab { padding: 8px 13px; font-size: 0.82rem; }
+      .output-card { padding: 20px; }
+      .input-footer { flex-wrap: wrap; }
+      .hint { order: 2; width: 100%; }
+      .submit-btn { order: 1; flex: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🔍 Fikir Havuzu</div>
+  <div class="logo-sub">Türkiye Pazar Radarı — Girişimci &amp; Şirket Sahipleri için AI Destekli Pazar Araştırması</div>
+</header>
+
+<main>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="analiz">📊 Analiz</button>
+    <button class="tab" data-tab="haberler">📰 Haberler</button>
+    <button class="tab" data-tab="rakipler">⚔️ Rakipler</button>
+    <button class="tab" data-tab="dogrulama">✅ Doğrulama</button>
+    <button class="tab" data-tab="derinlik">🔭 Derinlik</button>
+  </div>
+
+  <!-- Input -->
+  <div class="input-card">
+    <label class="input-label" for="msg">Fikrini, sektörünü veya sorununu yaz — birlikte eşeleyelim</label>
+    <textarea id="msg" placeholder="Örn: Türkiye'de çiftçilere yönelik drone kiralama servisi açmak istiyorum. Pazar nasıl?"></textarea>
+    <div class="input-footer">
+      <span class="hint">Ctrl + Enter ile gönder</span>
+      <button class="submit-btn" id="send-btn">Analiz Et →</button>
+    </div>
+  </div>
+
+  <!-- Examples -->
+  <div class="examples">
+    <div class="examples-title">Örnek sorgular</div>
+    <div class="examples-grid" id="chips"></div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span id="loading-txt">Analiz yapılıyor</span>
+    <div class="dots">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="output-section" id="output">
+    <div class="output-header">
+      <span class="output-badge" id="out-badge">📊 Analiz Sonuçları</span>
+    </div>
+    <div class="output-card">
+      <div class="md" id="out-content"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const TABS = {
+    analiz: {
+      badge: '📊 Analiz Sonuçları',
+      loading: 'Pazar analizi yapılıyor',
+      chips: [
+        "Türkiye'de çiftçilere drone kiralama servisi açmak istiyorum",
+        "E-ticaret sektöründe B2B lojistik fırsatları neler?",
+        "Yenilenebilir enerji Türkiye'de büyüme potansiyeli var mı?",
+        "Sağlık teknolojisi alanında girişim kurmayı düşünüyorum",
+      ],
+    },
+    haberler: {
+      badge: '📰 Haber & Trend Analizi',
+      loading: 'Güncel haberler taranıyor',
+      chips: [
+        "Türkiye yapay zeka düzenlemelerinde son durum nedir?",
+        "Fintech sektöründe son yatırım haberleri",
+        "E-ticaret büyüme haberleri ve istatistikler",
+        "Tarım teknolojisi alanındaki son gelişmeler",
+      ],
+    },
+    rakipler: {
+      badge: '⚔️ Rakip Analizi',
+      loading: 'Rakip analizi yapılıyor',
+      chips: [
+        "Logo ve Mikro ERP çözümlerini karşılaştır",
+        "Trendyol ve Hepsiburada'nın güçlü zayıf yönleri",
+        "Türkiye'deki online eğitim platformları kimler?",
+        "Mobil ödeme uygulamaları rekabet analizi",
+      ],
+    },
+    dogrulama: {
+      badge: '✅ Fikir Doğrulama',
+      loading: 'Fikir doğrulanıyor',
+      chips: [
+        "Türkiye'de vegan fast food zinciri açmak mantıklı mı?",
+        "Abonelik bazlı organik gıda kutusu iş modeli çalışır mı?",
+        "Online terapi platformu Türkiye'de pazar var mı?",
+        "B2B SaaS muhasebe yazılımı fikrimi doğrula",
+      ],
+    },
+    derinlik: {
+      badge: '🔭 Derin Sektör Analizi',
+      loading: 'Derin sektör analizi yapılıyor',
+      chips: [
+        "Türkiye sağlık sektörünün tam analizi",
+        "Fintech ekosistemi ve regülasyon çerçevesi",
+        "Eğitim teknolojileri sektörü kapsamlı rapor",
+        "Türkiye savunma sanayii girişim ekosistemi",
+      ],
+    },
+  };
+
+  let activeTab = 'analiz';
+  let busy = false;
+
+  const msgEl     = document.getElementById('msg');
+  const sendBtn   = document.getElementById('send-btn');
+  const loadingEl = document.getElementById('loading');
+  const loadTxt   = document.getElementById('loading-txt');
+  const outputEl  = document.getElementById('output');
+  const outBadge  = document.getElementById('out-badge');
+  const outCont   = document.getElementById('out-content');
+  const chipsEl   = document.getElementById('chips');
+
+  function setTab(id) {
+    activeTab = id;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+    renderChips();
+  }
+
+  function renderChips() {
+    const list = TABS[activeTab]?.chips || [];
+    chipsEl.innerHTML = list.map(c =>
+      `<div class="chip" onclick="fillExample(this)">${c}</div>`
+    ).join('');
+  }
+
+  window.fillExample = el => {
+    msgEl.value = el.textContent;
+    msgEl.focus();
+  };
+
+  document.getElementById('tabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (t) setTab(t.dataset.tab);
+  });
+
+  sendBtn.addEventListener('click', analyze);
+  msgEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); analyze(); }
+  });
+
+  async function analyze() {
+    const msg = msgEl.value.trim();
+    if (!msg || busy) return;
+
+    busy = true;
+    sendBtn.disabled = true;
+    loadTxt.textContent = TABS[activeTab]?.loading || 'Analiz yapılıyor';
+    loadingEl.classList.add('on');
+    outputEl.classList.remove('on');
+    outCont.innerHTML = '';
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, tab: activeTab }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `Sunucu hatası: ${res.status}`);
+      }
+
+      outBadge.textContent = TABS[activeTab]?.badge || 'Sonuçlar';
+      loadingEl.classList.remove('on');
+      outputEl.classList.add('on');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let text = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+        outCont.innerHTML = marked.parse(text) + '<span class="cursor"></span>';
+        outCont.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+
+      outCont.innerHTML = marked.parse(text);
+
+    } catch (err) {
+      loadingEl.classList.remove('on');
+      outputEl.classList.add('on');
+      outCont.innerHTML = `<div class="err">⚠️ ${escHtml(err.message)}</div>`;
+    } finally {
+      busy = false;
+      sendBtn.disabled = false;
+    }
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  renderChips();
+</script>
+
+</body>
+</html>
