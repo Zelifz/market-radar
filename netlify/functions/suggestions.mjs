@@ -47,29 +47,28 @@ export default async (req) => {
     });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const googleKey = process.env.GOOGLE_API_KEY;
+  if (!googleKey) {
     return new Response(JSON.stringify({ buttons: [] }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const userContent = `Tab: ${tab}\nUser asked: "${userQuery.slice(0, 200)}"\n\nAI response (first 1500 chars):\n${responseText.slice(0, 1500)}`;
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleKey}`;
+
+    const res = await fetch(geminiUrl, {
       method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 256,
-        system: SYSTEM_PROMPT,
-        messages: [{
-          role: "user",
-          content: `Tab: ${tab}\nUser asked: "${userQuery.slice(0, 200)}"\n\nAI response (first 1500 chars):\n${responseText.slice(0, 1500)}`,
-        }],
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: userContent }] }],
+        generationConfig: {
+          maxOutputTokens: 256,
+          temperature: 0.3,
+        },
       }),
     });
 
@@ -80,7 +79,7 @@ export default async (req) => {
     }
 
     const data = await res.json();
-    const text = (data.content?.[0]?.text || "").trim();
+    const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
 
     let parsed = { buttons: [] };
     try {
@@ -88,7 +87,6 @@ export default async (req) => {
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { buttons: [] };
     } catch { /* silent */ }
 
-    // Sanitize: max 3 buttons, truncate long labels
     if (Array.isArray(parsed.buttons)) {
       parsed.buttons = parsed.buttons.slice(0, 3).filter(b => b.label && b.query);
     } else {
