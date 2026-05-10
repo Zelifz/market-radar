@@ -183,17 +183,39 @@
     }
     .src-chip-more:hover { color: var(--text); border-color: var(--muted); }
 
-    /* ── Transparency row ── */
-    .transparency-row {
+    /* ── Source Analysis section ── */
+    .source-analysis {
+      border-top: 1px solid var(--border);
+      margin-top: 10px;
+      padding-top: 8px;
+    }
+    .sa-title-row {
       display: flex;
       align-items: center;
-      gap: 14px;
-      padding: 7px 0 2px;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+    .sa-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+    }
+    .sa-stats {
+      display: flex;
+      gap: 12px;
       font-size: 0.71rem;
       color: var(--muted);
-      border-top: 1px solid var(--border);
-      margin-top: 6px;
       flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .sa-explanation {
+      font-size: 0.7rem;
+      color: #5a5a80;
+      line-height: 1.55;
+      margin-bottom: 6px;
+      font-style: italic;
     }
     .t-verified { color: var(--green); }
     .t-warn { color: var(--warn); }
@@ -268,18 +290,22 @@
     }
 
     .follow-btn {
-      padding: 4px 11px;
+      padding: 5px 12px;
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 16px;
-      font-size: 0.77rem;
-      color: var(--muted);
+      font-size: 0.78rem;
       cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
       font-family: inherit;
       line-height: 1.5;
     }
-    .follow-btn:hover { border-color: var(--accent2); color: var(--text); }
+    .follow-btn:nth-child(3n+1) { border-color: rgba(124,109,240,0.35); color: #9b8ef5; }
+    .follow-btn:nth-child(3n+1):hover { border-color: var(--accent); color: #c0b0ff; background: rgba(124,109,240,0.08); }
+    .follow-btn:nth-child(3n+2) { border-color: rgba(62,207,184,0.35); color: #5dd6c8; }
+    .follow-btn:nth-child(3n+2):hover { border-color: var(--accent2); color: #90ede4; background: rgba(62,207,184,0.08); }
+    .follow-btn:nth-child(3n+3) { border-color: rgba(240,184,109,0.35); color: #e8b86a; }
+    .follow-btn:nth-child(3n+3):hover { border-color: var(--warn); color: #f0cc8a; background: rgba(240,184,109,0.08); }
 
     /* ── Trust score badge ── */
     .trust-badge {
@@ -784,74 +810,25 @@ async function fetchSuggestions(responseText, tab, userQuery, container) {
   } catch { /* silent — buttons are optional */ }
 }
 
+function buildSourceExplanation(scanned, verified, conflicting) {
+  if (scanned === 0) return '';
+  const parts = [];
+  const neutral = scanned - verified;
+  if (verified > 0 && neutral > 0) {
+    parts.push(`${verified} kaynak Reuters, Bloomberg veya araştırma firmalarından doğrulandı; ${neutral} tanesi genel web kaynaklarından.`);
+  } else if (verified > 0 && neutral === 0) {
+    parts.push(`Tüm ${verified} kaynak güvenilir yayınlardan doğrulandı.`);
+  } else {
+    parts.push(`Büyük yayın eşleşmesi bulunamadı — sonuçlar genel web kaynaklarından.`);
+  }
+  if (conflicting > 0) {
+    parts.push(`${conflicting} veri noktasında kaynaklar farklı rakamlar bildirdi.`);
+  }
+  return parts.join(' ');
+}
+
 function buildSourcesUI(sources, meta, fromCache) {
   if (!sources.length && !meta) return null;
-
-  const container = document.createElement('div');
-
-  // ── Source pills row ──
-  if (sources.length > 0) {
-    const row = document.createElement('div');
-    row.className = 'sources-row';
-
-    const label = document.createElement('span');
-    label.className = 'sources-label';
-    label.textContent = '🔗 Sources:';
-    row.appendChild(label);
-
-    const MAX_VISIBLE = 5;
-    const visible = sources.slice(0, MAX_VISIBLE);
-    const overflow = sources.slice(MAX_VISIBLE);
-
-    visible.forEach(s => {
-      const a = document.createElement('a');
-      const quality = s.quality || classifySourceFE(s.url);
-      a.className = `src-chip${quality === 'trusted' ? ' trusted' : ''}`;
-      a.href = s.url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      let domain = s.url;
-      try { domain = new URL(s.url).hostname.replace('www.', ''); } catch {}
-      const label = s.title && s.title !== s.url
-        ? s.title.replace(/\s*[-|].*$/, '').trim().slice(0, 40)
-        : domain;
-      a.title = s.title || domain;
-      a.textContent = label;
-      row.appendChild(a);
-    });
-
-    if (overflow.length > 0) {
-      const moreBtn = document.createElement('button');
-      moreBtn.className = 'src-chip-more';
-      moreBtn.textContent = `+${overflow.length} more`;
-      moreBtn.addEventListener('click', () => {
-        moreBtn.remove();
-        overflow.forEach(s => {
-          const a = document.createElement('a');
-          const quality = s.quality || classifySourceFE(s.url);
-          a.className = `src-chip${quality === 'trusted' ? ' trusted' : ''}`;
-          a.href = s.url;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          let domain = s.url;
-          try { domain = new URL(s.url).hostname.replace('www.', ''); } catch {}
-          const lbl = s.title && s.title !== s.url
-            ? s.title.replace(/\s*[-|].*$/, '').trim().slice(0, 40)
-            : domain;
-          a.title = s.title || domain;
-          a.textContent = lbl;
-          row.appendChild(a);
-        });
-      });
-      row.appendChild(moreBtn);
-    }
-
-    container.appendChild(row);
-  }
-
-  // ── Transparency row ──
-  const trow = document.createElement('div');
-  trow.className = 'transparency-row';
 
   const scanned = meta?.scanned ?? sources.length;
   const verified = meta?.verified ?? 0;
@@ -860,13 +837,82 @@ function buildSourcesUI(sources, meta, fromCache) {
   const trustClass = verified >= 2 ? 'trust-high' : verified === 1 ? 'trust-med' : 'trust-low';
   const trustText  = verified >= 2 ? '✅ Verified' : verified === 1 ? '⚠️ Single source' : '❌ No sources';
 
-  trow.innerHTML = `<span>📡 ${scanned} scanned</span>`
-    + `<span class="t-verified">✅ ${verified} verified</span>`
-    + (conflicting > 0 ? `<span class="t-warn">⚠️ ${conflicting} conflicting</span>` : '')
-    + (fromCache ? `<span class="t-cached">⚡ from session cache</span>` : '')
-    + `<span class="trust-badge ${trustClass}" style="margin-left:auto">${trustText}</span>`;
+  const container = document.createElement('div');
 
-  container.appendChild(trow);
+  // ── Source Analysis header ──
+  const sa = document.createElement('div');
+  sa.className = 'source-analysis';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'sa-title-row';
+  titleRow.innerHTML = `<span class="sa-title">Source Analysis</span>`
+    + `<span class="trust-badge ${trustClass}">${trustText}</span>`
+    + (fromCache ? `<span class="t-cached">⚡ cached</span>` : '');
+  sa.appendChild(titleRow);
+
+  const statsRow = document.createElement('div');
+  statsRow.className = 'sa-stats';
+  statsRow.innerHTML = `<span>📡 ${scanned} scanned</span>`
+    + `<span class="t-verified">✅ ${verified} verified</span>`
+    + (conflicting > 0 ? `<span class="t-warn">⚠️ ${conflicting} conflicting</span>` : '');
+  sa.appendChild(statsRow);
+
+  const explanation = buildSourceExplanation(scanned, verified, conflicting);
+  if (explanation) {
+    const expEl = document.createElement('div');
+    expEl.className = 'sa-explanation';
+    expEl.textContent = explanation;
+    sa.appendChild(expEl);
+  }
+
+  // ── Source pills ──
+  if (sources.length > 0) {
+    const row = document.createElement('div');
+    row.className = 'sources-row';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'sources-label';
+    lbl.textContent = '🔗 Sources:';
+    row.appendChild(lbl);
+
+    const MAX_VISIBLE = 5;
+    const visible = sources.slice(0, MAX_VISIBLE);
+    const overflow = sources.slice(MAX_VISIBLE);
+
+    const makeChip = s => {
+      const a = document.createElement('a');
+      const quality = s.quality || classifySourceFE(s.url);
+      a.className = `src-chip${quality === 'trusted' ? ' trusted' : ''}`;
+      a.href = s.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      let domain = s.url;
+      try { domain = new URL(s.url).hostname.replace('www.', ''); } catch {}
+      const chipLabel = s.title && s.title !== s.url
+        ? s.title.replace(/\s*[-|].*$/, '').trim().slice(0, 40)
+        : domain;
+      a.title = s.title || domain;
+      a.textContent = chipLabel;
+      return a;
+    };
+
+    visible.forEach(s => row.appendChild(makeChip(s)));
+
+    if (overflow.length > 0) {
+      const moreBtn = document.createElement('button');
+      moreBtn.className = 'src-chip-more';
+      moreBtn.textContent = `+${overflow.length} more`;
+      moreBtn.addEventListener('click', () => {
+        moreBtn.remove();
+        overflow.forEach(s => row.appendChild(makeChip(s)));
+      });
+      row.appendChild(moreBtn);
+    }
+
+    sa.appendChild(row);
+  }
+
+  container.appendChild(sa);
   return container;
 }
 
