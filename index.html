@@ -818,29 +818,31 @@ async function fetchSuggestions(responseText, tab, userQuery, container) {
   } catch { /* silent — buttons are optional */ }
 }
 
-function buildSourceExplanation(scanned, verified, conflicting) {
-  if (scanned === 0) return '';
+function buildSourceExplanation(scanned, verified, conflicting, searchCount) {
+  if (searchCount === 0 || scanned === 0) {
+    return 'Bu yanıt için yeni arama yapılmadı — önceki oturum verilerinden sentezlendi. Taze veri için tekrar sor.';
+  }
   const parts = [];
   const neutral = scanned - verified;
-  if (verified > 0 && neutral > 0) {
-    parts.push(`${verified} kaynak Reuters, Bloomberg veya araştırma firmalarından doğrulandı; ${neutral} tanesi genel web kaynaklarından.`);
-  } else if (verified > 0 && neutral === 0) {
-    parts.push(`Tüm ${verified} kaynak güvenilir yayınlardan doğrulandı.`);
-  } else {
-    parts.push(`Büyük yayın eşleşmesi bulunamadı — sonuçlar genel web kaynaklarından.`);
+  if (verified > 0) {
+    parts.push(`${verified} kaynak bilinen güvenilir yayın (Reuters, Bloomberg vb.) — alan adı tanındı. Not: alan adı tanınmış olmak, iddiaların birden fazla bağımsız kaynakta teyit edildiği anlamına gelmez.`);
+  }
+  if (neutral > 0) {
+    parts.push(`${neutral} kaynak genel web — bağımsız teyit edilmedi, daha temkinli değerlendirilmeli.`);
   }
   if (conflicting > 0) {
-    parts.push(`${conflicting} veri noktasında kaynaklar farklı rakamlar bildirdi.`);
+    parts.push(`${conflicting} noktada kaynaklar farklı rakam bildirdi; yanıtta ⚠️ ile işaretlendi.`);
   }
   return parts.join(' ');
 }
 
 function buildSourcesUI(sources, meta, fromCache) {
-  if (!sources.length && !meta) return null;
+  if (!meta) return null;
 
   const scanned = meta?.scanned ?? sources.length;
   const verified = meta?.verified ?? 0;
   const conflicting = meta?.conflicting ?? 0;
+  const searchCount = meta?.searchCount ?? 0;
 
   const trustClass = verified >= 2 ? 'trust-high' : verified === 1 ? 'trust-med' : 'trust-low';
   const trustText  = verified >= 2 ? '✅ Verified' : verified === 1 ? '⚠️ Single source' : '❌ No sources';
@@ -860,12 +862,14 @@ function buildSourcesUI(sources, meta, fromCache) {
 
   const statsRow = document.createElement('div');
   statsRow.className = 'sa-stats';
-  statsRow.innerHTML = `<span>📡 ${scanned} scanned</span>`
-    + `<span class="t-verified">✅ ${verified} verified</span>`
-    + (conflicting > 0 ? `<span class="t-warn">⚠️ ${conflicting} conflicting</span>` : '');
+  statsRow.innerHTML = (searchCount === 0
+    ? `<span style="color:var(--warn)">⚡ Oturum hafızasından — yeni arama yok</span>`
+    : `<span>📡 ${scanned} scanned</span>`
+      + `<span class="t-verified">✅ ${verified} verified</span>`
+      + (conflicting > 0 ? `<span class="t-warn">⚠️ ${conflicting} conflicting</span>` : ''));
   sa.appendChild(statsRow);
 
-  const explanation = buildSourceExplanation(scanned, verified, conflicting);
+  const explanation = buildSourceExplanation(scanned, verified, conflicting, searchCount);
   if (explanation) {
     const expEl = document.createElement('div');
     expEl.className = 'sa-explanation';

@@ -66,7 +66,13 @@ Total response: 150-220 words. If more depth is needed, end the last bullet with
 - If a well-funded giant already owns this space, lead with that.
 - If the idea needs a pivot to work, say exactly what that pivot is.
 
-**Session efficiency:** Check conversation history before searching — don't repeat recent searches.
+**CITATIONS — always tag verification level:**
+- If 2+ independent sources agree on a claim: ✅ **$X** *(Reuters + Statista, 2024)*
+- If only 1 source: ⚠️ **$X** *(Forbes, 2024 — single source)*
+- Never cite a number without saying which source(s) you found it in.
+
+**SEARCHES — always run at least 1 per response:**
+Even on follow-up questions, run at least one new search to verify claims or find updates. Don't just rely on session context — data goes stale. Avoid repeating the exact same query, but always search for something fresh.
 
 End with:
 > **Confidence:** ✅ HIGH — [reason] | ⚠️ MEDIUM — [reason] | ❌ LOW — [reason]`;
