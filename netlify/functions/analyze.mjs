@@ -47,8 +47,8 @@ function classifyDepth(message) {
   const hasDeep = deepSignals.some(k => lower.includes(k));
   const hasSimple = simpleSignals.some(k => lower.includes(k));
   if (hasSimple && !hasDeep && message.length < 120) return { depth: 'simple', maxSearches: 2 };
-  if (hasDeep || message.length > 150) return { depth: 'deep', maxSearches: 5 };
-  return { depth: 'moderate', maxSearches: 3 };
+  if (hasDeep || message.length > 150) return { depth: 'deep', maxSearches: 3 };
+  return { depth: 'moderate', maxSearches: 2 };
 }
 
 const COMMON_SUFFIX = `
@@ -169,7 +169,7 @@ export default async (req) => {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1400,
+        max_tokens: 2200,
         stream: true,
         system: systemPrompt,
         tools: [
