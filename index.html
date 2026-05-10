@@ -830,7 +830,7 @@ async function fetchSuggestions(responseText, tab, userQuery, container) {
 
 function buildSourceExplanation(scanned, verified, conflicting, searchCount) {
   if (searchCount === 0 || scanned === 0) {
-    return 'Bu yanıt için yeni arama yapılmadı — önceki oturum verilerinden sentezlendi. Taze veri için tekrar sor.';
+    return 'AI bu yanıt için internet araması yapmadı — kendi eğitim verisinden yanıtladı. Veriler güncel olmayabilir.';
   }
   const parts = [];
   const neutral = scanned - verified;
@@ -873,7 +873,7 @@ function buildSourcesUI(sources, meta, fromCache) {
   const statsRow = document.createElement('div');
   statsRow.className = 'sa-stats';
   statsRow.innerHTML = (searchCount === 0
-    ? `<span style="color:var(--warn)">⚡ Oturum hafızasından — yeni arama yok</span>`
+    ? `<span style="color:var(--warn)">⚠️ İnternet araması yapılmadı — eğitim verisi kullanıldı</span>`
     : `<span>📡 ${scanned} scanned</span>`
       + `<span class="t-verified">✅ ${verified} verified</span>`
       + (conflicting > 0 ? `<span class="t-warn">⚠️ ${conflicting} conflicting</span>` : ''));
