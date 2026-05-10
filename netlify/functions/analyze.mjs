@@ -46,38 +46,61 @@ function classifyDepth(message) {
   ];
   const hasDeep = deepSignals.some(k => lower.includes(k));
   const hasSimple = simpleSignals.some(k => lower.includes(k));
-  if (hasSimple && !hasDeep && message.length < 120) return { depth: 'simple', maxSearches: 2 };
-  if (hasDeep || message.length > 150) return { depth: 'deep', maxSearches: 3 };
-  return { depth: 'moderate', maxSearches: 2 };
+  if (hasSimple && !hasDeep && message.length < 120) return 'simple';
+  if (hasDeep || message.length > 150) return 'deep';
+  return 'moderate';
 }
 
-// Prepended to every system prompt — AI reads this first
-const SEARCH_FIRST = `YOUR VERY FIRST ACTION must be to call web_search. Do this before writing a single word of response. No exceptions, no skipping, not even for simple questions. Search, then answer.
+// ── Tavily search ──
+async function search(query, apiKey, depth = 'moderate') {
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query,
+        search_depth: depth === 'deep' ? 'advanced' : 'basic',
+        max_results: 6,
+        include_answer: false,
+        include_raw_content: false,
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.results || [];
+  } catch { return []; }
+}
 
-`;
+function formatResultsForClaude(results) {
+  if (!results.length) return 'No search results found.';
+  return results.map((r, i) =>
+    `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.content?.slice(0, 400) || ''}`
+  ).join('\n\n');
+}
 
 const COMMON_SUFFIX = `
 
 **FORMAT — strict:**
 Use ## headers. Under each header: 2-3 bullet points MAX. No prose paragraphs. Bold every number and source name.
-Total response: 150-220 words. If more depth is needed, end the last bullet with "📎 Full breakdown available — ask for it."
+Total response: 150-220 words. If more depth needed, end last bullet with "📎 Full breakdown available — ask for it."
 
 **HONESTY — non-negotiable:**
-- Every market size claim needs a number + source + year. No "large market", no "booming sector".
+- Every market size claim needs number + source + year. No "large market", no "booming sector".
 - Name the biggest obstacle first, not last.
-- If a well-funded giant already owns this space, lead with that.
+- If a giant already owns this space, lead with that.
 - If the idea needs a pivot to work, say exactly what that pivot is.
-- If the idea is physically impossible or fictional (e.g. "flying food cart"), say so in one line, then suggest the closest realistic version.
+- If the idea is physically impossible or fictional, say so in one line then suggest the closest realistic version.
 
-**CITATIONS — always tag verification level:**
-- If 2+ independent sources agree: ✅ **$X** *(Reuters + Statista, 2024)*
-- If only 1 source: ⚠️ **$X** *(Forbes, 2024 — single source)*
+**CITATIONS — tag verification level:**
+- 2+ sources agree: ✅ **$X** *(Reuters + Statista, 2024)*
+- 1 source only: ⚠️ **$X** *(Forbes, 2024 — single source)*
 
 End with:
 > **Confidence:** ✅ HIGH — [reason] | ⚠️ MEDIUM — [reason] | ❌ LOW — [reason]`;
 
 const SYSTEM_PROMPTS = {
-  analyze: SEARCH_FIRST + `You are a hard-nosed market research analyst.
+  analyze: `You are a hard-nosed market research analyst. Search results are provided — use them as your primary data source.
 
 Structure every response with these exact headers and max 3 bullets each:
 ## Market Size — real number, source, year. If declining or flat, say so.
@@ -85,9 +108,9 @@ Structure every response with these exact headers and max 3 bullets each:
 ## Entry Barriers — what stops a new player? Be specific.
 ## Verdict — one sentence: proceed / pivot / avoid, and why.
 
-Cite every number: **$X.XB** ([Source](URL), Year)${COMMON_SUFFIX}`,
+Cite every number: **$X.XB** ([Source Name](URL), Year)${COMMON_SUFFIX}`,
 
-  competitors: SEARCH_FIRST + `You are a competitive intelligence analyst. Real data only — no guesses.
+  competitors: `You are a competitive intelligence analyst. Search results are provided — use them, no guessing.
 
 Structure:
 ## Market Control — is this space open or locked up by incumbents?
@@ -95,9 +118,9 @@ Structure:
 ## Realistic Entry Gap — what specific gap exists, if any?
 ## Differentiation — one concrete angle a new entrant could own
 
-Cite sources. ⚠️ mark anything unverified.${COMMON_SUFFIX}`,
+Cite sources. ⚠️ mark anything not found in the provided results.${COMMON_SUFFIX}`,
 
-  validate: SEARCH_FIRST + `You are a startup idea validator. Default stance: skepticism. Find reasons it WON'T work before reasons it will.
+  validate: `You are a startup idea validator. Search results are provided. Default stance: skepticism. Find reasons it WON'T work before reasons it will.
 
 Structure:
 ## Problem Reality — do people actually pay to solve this today?
@@ -107,7 +130,7 @@ Structure:
 
 Be direct. Don't soften.${COMMON_SUFFIX}`,
 
-  deep: SEARCH_FIRST + `You are a sector research analyst. Every claim needs a source.
+  deep: `You are a sector research analyst. Search results are provided — every claim needs a source from them.
 
 Structure (2-3 bullets each):
 ## Sector Size & Growth — number, CAGR, source, year
@@ -116,9 +139,9 @@ Structure (2-3 bullets each):
 ## Growth Drivers — what's actually pulling the market forward
 ## Entry Recommendation — specific, honest, actionable
 
-📎 If full Porter's Five Forces / SWOT is needed, user can ask for it.${COMMON_SUFFIX}`,
+📎 Full Porter's Five Forces / SWOT available on request.${COMMON_SUFFIX}`,
 
-  crosscheck: SEARCH_FIRST + `You are a fact-checker. For each claim: search for support AND contradiction.
+  crosscheck: `You are a fact-checker. Search results are provided — use them to verify or refute each claim.
 
 Per claim:
 **Claim**: [claim]
@@ -155,46 +178,10 @@ export default async (req) => {
     return new Response("API key not configured", { status: 500 });
   }
 
-  const { depth, maxSearches } = classifyDepth(message);
+  const tavilyKey = process.env.TAVILY_API_KEY;
+  const depth = classifyDepth(message);
   const systemPrompt = SYSTEM_PROMPTS[tab] || SYSTEM_PROMPTS.analyze;
   const trimmedHistory = history.slice(-12);
-  const messages = [
-    ...trimmedHistory,
-    { role: "user", content: message.trim() },
-  ];
-
-  let anthropicRes;
-  try {
-    anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 2200,
-        stream: true,
-        system: systemPrompt,
-        tools: [
-          {
-            type: "web_search_20250305",
-            name: "web_search",
-            max_uses: maxSearches,
-          },
-        ],
-        messages,
-      }),
-    });
-  } catch (err) {
-    return new Response(`API connection error: ${err.message}`, { status: 502 });
-  }
-
-  if (!anthropicRes.ok) {
-    const errText = await anthropicRes.text();
-    return new Response(`Anthropic API error: ${errText}`, { status: 502 });
-  }
 
   const encoder = new TextEncoder();
   const { readable, writable } = new TransformStream();
@@ -202,12 +189,76 @@ export default async (req) => {
 
   (async () => {
     try {
+      // ── Tavily search ──
+      let searchResults = [];
+      let allSources = [];
+      let searchCount = 0;
+
+      if (tavilyKey) {
+        await writer.write(encoder.encode(`<!--STATUS:🔍 Searching the web...-->`));
+        searchResults = await search(message.trim(), tavilyKey, depth);
+        searchCount = 1;
+
+        const seenUrls = new Set();
+        for (const r of searchResults) {
+          if (r.url && !seenUrls.has(r.url)) {
+            seenUrls.add(r.url);
+            allSources.push({
+              url: r.url,
+              title: r.title || r.url,
+              quality: classifySource(r.url),
+            });
+          }
+        }
+      }
+
+      await writer.write(encoder.encode(`<!--STATUS:🤖 Analyzing...-->`));
+
+      // ── Build message with search context ──
+      const searchContext = tavilyKey
+        ? `Current web search results for: "${message.trim()}"\n\n${formatResultsForClaude(searchResults)}\n\n---\n\n`
+        : '';
+
+      const userContent = searchContext + message.trim();
+
+      const messages = [
+        ...trimmedHistory,
+        { role: "user", content: userContent },
+      ];
+
+      // ── Call Claude (no tools) ──
+      let anthropicRes;
+      try {
+        anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-6",
+            max_tokens: 1800,
+            stream: true,
+            system: systemPrompt,
+            messages,
+          }),
+        });
+      } catch (err) {
+        await writer.write(encoder.encode(`\n\n**Connection error:** ${err.message}`));
+        return;
+      }
+
+      if (!anthropicRes.ok) {
+        const errText = await anthropicRes.text();
+        await writer.write(encoder.encode(`\n\n**API error:** ${errText}`));
+        return;
+      }
+
+      // ── Stream Claude response ──
       const reader = anthropicRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      const allSources = [];
-      const seenUrls = new Set();
-      let searchCount = 0;
       let textAccumulator = "";
 
       while (true) {
@@ -227,41 +278,6 @@ export default async (req) => {
           try { evt = JSON.parse(rawLine); } catch { continue; }
 
           if (
-            evt.type === "content_block_start" &&
-            evt.content_block?.type === "tool_use" &&
-            evt.content_block?.name === "web_search"
-          ) {
-            searchCount++;
-            const icon = depth === 'simple' ? '🔍' : depth === 'deep' ? '🔭' : '🔎';
-            await writer.write(
-              encoder.encode(`<!--STATUS:${icon} Search ${searchCount}/${maxSearches}...-->`)
-            );
-          }
-
-          if (evt.type === "content_block_start") {
-            const block = evt.content_block;
-            const items =
-              block?.type === "web_search_tool_result"
-                ? (block.content || [])
-                : block?.type === "tool_result" && Array.isArray(block.content)
-                  ? block.content.filter(i => i.type === "web_search_result")
-                  : [];
-
-            for (const item of items) {
-              const url = item.url;
-              if (url && !seenUrls.has(url)) {
-                seenUrls.add(url);
-                allSources.push({
-                  url,
-                  title: item.title || url,
-                  page_age: item.page_age,
-                  quality: classifySource(url),
-                });
-              }
-            }
-          }
-
-          if (
             evt.type === "content_block_delta" &&
             evt.delta?.type === "text_delta" &&
             evt.delta.text
@@ -272,6 +288,7 @@ export default async (req) => {
         }
       }
 
+      // ── Write DATA sentinel ──
       const qualitySources = allSources.filter(s => s.quality !== 'low');
       const verifiedCount = allSources.filter(s => s.quality === 'trusted').length;
       const conflictingCount = (textAccumulator.match(/⚠️/g) || []).length;
