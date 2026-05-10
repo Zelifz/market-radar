@@ -245,7 +245,7 @@ export default async (req) => {
       };
 
       // ── Call Gemini ──
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${googleKey}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${googleKey}`;
 
       let geminiRes;
       try {
