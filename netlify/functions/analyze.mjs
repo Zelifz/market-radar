@@ -72,7 +72,7 @@ async function search(query, apiKey, depth = 'moderate') {
   } catch { return []; }
 }
 
-function formatResultsForClaude(results) {
+function formatResultsForAI(results) {
   if (!results.length) return 'No search results found.';
   return results.map((r, i) =>
     `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.content?.slice(0, 400) || ''}`
@@ -152,6 +152,14 @@ Per claim:
 End with overall reliability score and the single most important correction.${COMMON_SUFFIX}`,
 };
 
+// Convert Anthropic-style history to Gemini format
+function toGeminiHistory(history) {
+  return history.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+}
+
 export default async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS });
@@ -173,15 +181,14 @@ export default async (req) => {
     return new Response("Message cannot be empty", { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return new Response("API key not configured", { status: 500 });
+  const googleKey = process.env.GOOGLE_API_KEY;
+  if (!googleKey) {
+    return new Response("Google API key not configured", { status: 500 });
   }
 
   const tavilyKey = process.env.TAVILY_API_KEY;
   const depth = classifyDepth(message);
   const systemPrompt = SYSTEM_PROMPTS[tab] || SYSTEM_PROMPTS.analyze;
-  const trimmedHistory = history.slice(-12);
 
   const encoder = new TextEncoder();
   const { readable, writable } = new TransformStream();
@@ -215,48 +222,51 @@ export default async (req) => {
       await writer.write(encoder.encode(`<!--STATUS:🤖 Analyzing...-->`));
 
       // ── Build message with search context ──
-      const searchContext = tavilyKey
-        ? `Current web search results for: "${message.trim()}"\n\n${formatResultsForClaude(searchResults)}\n\n---\n\n`
+      const searchContext = tavilyKey && searchResults.length
+        ? `Current web search results for: "${message.trim()}"\n\n${formatResultsForAI(searchResults)}\n\n---\n\n`
         : '';
 
       const userContent = searchContext + message.trim();
 
-      const messages = [
-        ...trimmedHistory,
-        { role: "user", content: userContent },
-      ];
+      // ── Build Gemini request ──
+      const trimmedHistory = history.slice(-12);
+      const geminiHistory = toGeminiHistory(trimmedHistory);
 
-      // ── Call Claude (no tools) ──
-      let anthropicRes;
+      const geminiBody = {
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [
+          ...geminiHistory,
+          { role: 'user', parts: [{ text: userContent }] },
+        ],
+        generationConfig: {
+          maxOutputTokens: 1800,
+          temperature: 0.4,
+        },
+      };
+
+      // ── Call Gemini ──
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${googleKey}`;
+
+      let geminiRes;
       try {
-        anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-6",
-            max_tokens: 1800,
-            stream: true,
-            system: systemPrompt,
-            messages,
-          }),
+        geminiRes = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geminiBody),
         });
       } catch (err) {
         await writer.write(encoder.encode(`\n\n**Connection error:** ${err.message}`));
         return;
       }
 
-      if (!anthropicRes.ok) {
-        const errText = await anthropicRes.text();
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
         await writer.write(encoder.encode(`\n\n**API error:** ${errText}`));
         return;
       }
 
-      // ── Stream Claude response ──
-      const reader = anthropicRes.body.getReader();
+      // ── Stream Gemini response ──
+      const reader = geminiRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       let textAccumulator = "";
@@ -272,18 +282,15 @@ export default async (req) => {
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const rawLine = line.slice(6).trim();
-          if (rawLine === "[DONE]") continue;
+          if (!rawLine || rawLine === "[DONE]") continue;
 
           let evt;
           try { evt = JSON.parse(rawLine); } catch { continue; }
 
-          if (
-            evt.type === "content_block_delta" &&
-            evt.delta?.type === "text_delta" &&
-            evt.delta.text
-          ) {
-            textAccumulator += evt.delta.text;
-            await writer.write(encoder.encode(evt.delta.text));
+          const text = evt.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            textAccumulator += text;
+            await writer.write(encoder.encode(text));
           }
         }
       }
