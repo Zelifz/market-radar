@@ -691,9 +691,26 @@ async function analyze() {
     const decoder = new TextDecoder();
     let raw = '';
 
+    function extractData(str) {
+      // Greedy match — finds the LAST --> in string, safe when JSON contains -->
+      const m = str.match(/<!--DATA:([\s\S]+)-->[\s]*$/);
+      if (!m) return str;
+      try {
+        const data = JSON.parse(m[1]);
+        sources = data.sources || [];
+        meta = data.meta || null;
+      } catch { /* keep meta null */ }
+      return str.replace(/<!--DATA:[\s\S]+-->[\s]*$/, '');
+    }
+
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        // Flush decoder and do a final DATA sentinel check
+        raw += decoder.decode();
+        raw = extractData(raw);
+        break;
+      }
       raw += decoder.decode(value, { stream: true });
 
       // Status markers
@@ -702,16 +719,7 @@ async function analyze() {
         return '';
       });
 
-      // Combined data sentinel at end of stream (non-greedy, tolerates trailing whitespace)
-      const dataMatch = raw.match(/<!--DATA:([\s\S]+?)-->\s*$/);
-      if (dataMatch) {
-        try {
-          const data = JSON.parse(dataMatch[1]);
-          sources = data.sources || [];
-          meta = data.meta || null;
-        } catch {}
-        raw = raw.replace(/<!--DATA:[\s\S]+?-->\s*$/, '');
-      }
+      raw = extractData(raw);
 
       fullText = raw;
       streamCard.innerHTML = marked.parse(fullText) + '<span class="cursor"></span>';
@@ -772,7 +780,9 @@ function appendAiMessage(text, sources, meta, errorMsg, fromCache, userQuery) {
     card.innerHTML = marked.parse(text);
     wrap.appendChild(card);
 
-    const footer = buildSourcesUI(sources || [], meta, fromCache);
+    // Always show Source Analysis — use fallback meta if DATA sentinel wasn't received
+    const effectiveMeta = meta || { scanned: 0, verified: 0, conflicting: 0, searchCount: 0, depth: 'unknown' };
+    const footer = buildSourcesUI(sources || [], effectiveMeta, fromCache);
     if (footer) wrap.appendChild(footer);
 
     // Dynamic follow-up buttons — skip for simple queries and cached responses
