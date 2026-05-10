@@ -4,6 +4,68 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+const TRUSTED_DOMAINS = new Set([
+  'reuters.com','bloomberg.com','wsj.com','ft.com','economist.com',
+  'apnews.com','bbc.com','bbc.co.uk','nytimes.com','theguardian.com',
+  'techcrunch.com','wired.com','forbes.com','businessinsider.com','fortune.com',
+  'cnbc.com','hbr.org','harvard.edu','mit.edu','stanford.edu',
+  'mckinsey.com','bcg.com','bain.com','deloitte.com','pwc.com','kpmg.com',
+  'statista.com','grandviewresearch.com','mordorintelligence.com',
+  'marketsandmarkets.com','cbinsights.com','crunchbase.com','pitchbook.com',
+  'sec.gov','census.gov','bls.gov','worldbank.org','imf.org','oecd.org',
+  'gartner.com','idc.com','forrester.com','nielsen.com',
+  'nature.com','science.org','arxiv.org','investopedia.com','wikipedia.org',
+]);
+
+const LOW_QUALITY_DOMAINS = new Set([
+  'quora.com','pinterest.com','instagram.com','facebook.com',
+  'twitter.com','x.com','tiktok.com','snapchat.com','tumblr.com',
+]);
+
+function classifySource(url) {
+  try {
+    const domain = new URL(url).hostname.replace('www.', '');
+    if (TRUSTED_DOMAINS.has(domain)) return 'trusted';
+    if (LOW_QUALITY_DOMAINS.has(domain)) return 'low';
+    return 'neutral';
+  } catch { return 'neutral'; }
+}
+
+function classifyDepth(message) {
+  const lower = message.toLowerCase();
+  const deepSignals = [
+    'analyze','analysis','comprehensive','deep dive','deep-dive','compare','comparison',
+    'landscape','sector','industry','market','competitive','validate','report',
+    'trends','forecast','projection','strategy','opportunities','challenges',
+    'full','complete','overview','breakdown','research',
+  ];
+  const simpleSignals = [
+    'what is','what are','who is','when was','when did','where is',
+    'how much does','how many','define','definition','price of','cost of',
+    'founded','headquarters',
+  ];
+  const hasDeep = deepSignals.some(k => lower.includes(k));
+  const hasSimple = simpleSignals.some(k => lower.includes(k));
+  if (hasSimple && !hasDeep && message.length < 120) return { depth: 'simple', maxSearches: 2 };
+  if (hasDeep || message.length > 150) return { depth: 'deep', maxSearches: 5 };
+  return { depth: 'moderate', maxSearches: 3 };
+}
+
+const COMMON_SUFFIX = `
+
+**RESPONSE LENGTH — STRICT:** Keep your response under 250 words. If the topic genuinely requires more depth:
+- Write a 2-3 sentence summary of the key finding
+- List the 3 most critical data points as bullet points
+- End with exactly: "📎 Full detailed analysis available — ask for it."
+No filler sentences. Every sentence must carry a unique piece of information.
+
+**Session efficiency:** Before using web_search, check if the conversation history already contains recent data on this exact topic. If it does, synthesize from existing context without redundant searches.
+
+End your response with exactly this line (choose one):
+> **Confidence:** ✅ HIGH — [reason]
+> **Confidence:** ⚠️ MEDIUM — [reason]
+> **Confidence:** ❌ LOW — [reason]`;
+
 const SYSTEM_PROMPTS = {
   analyze: `You are a senior global market research analyst. You have web search access — use it for EVERY analysis to find real, current data.
 
@@ -12,7 +74,7 @@ Required for every response:
 - Find recent news and funding activity in this space (last 12 months)
 - Identify key demand signals (search trends, community activity, job postings)
 - Look for regulatory or geographic considerations
-- Flag any data points that seem outdated or conflicting
+- Flag ⚠️ any conflicting or outdated data points
 
 Structure your response:
 ## Market Overview
@@ -22,7 +84,7 @@ Structure your response:
 ## Next Steps
 
 After every data point, add a source link in format: ([Source Name](URL))
-Use real numbers. Never say "large market" — say "$12.4B (Statista 2024)".`,
+Use real numbers. Never say "large market" — say "$12.4B (Statista 2024)".${COMMON_SUFFIX}`,
 
   competitors: `You are a competitive intelligence analyst. Use web search to find REAL competitor data — not guesses.
 
@@ -39,7 +101,7 @@ Structure:
 ## Market Gaps & Opportunities
 ## Differentiation Playbook
 
-Cite every source. Mark unverified estimates clearly with ⚠️.`,
+Cite every source. Mark ⚠️ unverified estimates clearly.${COMMON_SUFFIX}`,
 
   validate: `You are a rigorous startup idea validator. Use web search to prove or disprove every assumption — challenge the idea hard.
 
@@ -51,13 +113,13 @@ Validation framework (run web searches for each):
 5. **Business Model Comparables** — Find similar business models and their unit economics
 6. **Fatal Flaw Check** — What could kill this idea? Regulation, timing, competition?
 
-Cross-check every major claim against 2+ sources. If sources conflict, highlight it.
+Cross-check every major claim against 2+ sources. If sources ⚠️ conflict, highlight it.
 
 End with:
 ## ✅ Proceed / ⚠️ Pivot / ❌ Stop
 **Verdict**: [Your honest assessment]
 **Confidence Level**: High / Medium / Low
-**Key Assumptions to Test First**: [list]`,
+**Key Assumptions to Test First**: [list]${COMMON_SUFFIX}`,
 
   deep: `You are a strategic analyst delivering deep-dive sector research. Use web search extensively — multiple searches per section.
 
@@ -79,7 +141,7 @@ Deliver a comprehensive report:
 ## 8. Entry Strategy Recommendations
 (Specific, actionable)
 
-Every data point must have a source citation. Note data recency.`,
+Every data point must have a source citation. Note data recency. Mark ⚠️ any conflicting data.${COMMON_SUFFIX}`,
 
   crosscheck: `You are a market research fact-checker. Your job is to verify or refute claims using web search.
 
@@ -99,14 +161,13 @@ Format each finding:
 **Confidence**: HIGH | MEDIUM | LOW
 ---
 
-At the end, provide an overall reliability score for the research and flag the most critical corrections.`,
+At the end, provide an overall reliability score for the research and flag the most critical corrections.${COMMON_SUFFIX}`,
 };
 
 export default async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS });
   }
-
   if (req.method !== "POST") {
     return new Response("Method Not Allowed", { status: 405 });
   }
@@ -129,11 +190,9 @@ export default async (req) => {
     return new Response("API key not configured", { status: 500 });
   }
 
+  const { depth, maxSearches } = classifyDepth(message);
   const systemPrompt = SYSTEM_PROMPTS[tab] || SYSTEM_PROMPTS.analyze;
-
-  // Keep last 12 messages to avoid token overflow
   const trimmedHistory = history.slice(-12);
-
   const messages = [
     ...trimmedHistory,
     { role: "user", content: message.trim() },
@@ -157,7 +216,7 @@ export default async (req) => {
           {
             type: "web_search_20250305",
             name: "web_search",
-            max_uses: 5,
+            max_uses: maxSearches,
           },
         ],
         messages,
@@ -181,8 +240,10 @@ export default async (req) => {
       const reader = anthropicRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      const sources = [];
+      const allSources = [];
+      const seenUrls = new Set();
       let searchCount = 0;
+      let textAccumulator = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -194,68 +255,74 @@ export default async (req) => {
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
-          const raw = line.slice(6).trim();
-          if (raw === "[DONE]") continue;
+          const rawLine = line.slice(6).trim();
+          if (rawLine === "[DONE]") continue;
 
           let evt;
-          try { evt = JSON.parse(raw); } catch { continue; }
+          try { evt = JSON.parse(rawLine); } catch { continue; }
 
-          // Tool use started — signal "searching" to frontend
           if (
             evt.type === "content_block_start" &&
             evt.content_block?.type === "tool_use" &&
             evt.content_block?.name === "web_search"
           ) {
             searchCount++;
+            const icon = depth === 'simple' ? '🔍' : depth === 'deep' ? '🔭' : '🔎';
             await writer.write(
-              encoder.encode(`<!--STATUS:Searching the web (${searchCount})...-->`)
+              encoder.encode(`<!--STATUS:${icon} Search ${searchCount}/${maxSearches}...-->`)
             );
           }
 
-          // Extract sources from web_search_tool_result blocks
           if (evt.type === "content_block_start") {
             const block = evt.content_block;
+            const items =
+              block?.type === "web_search_tool_result"
+                ? (block.content || [])
+                : block?.type === "tool_result" && Array.isArray(block.content)
+                  ? block.content.filter(i => i.type === "web_search_result")
+                  : [];
 
-            // web_search_tool_result type (built-in search results)
-            if (block?.type === "web_search_tool_result") {
-              const items = block.content || [];
-              for (const item of items) {
-                if (item.url && !sources.find((s) => s.url === item.url)) {
-                  sources.push({ url: item.url, title: item.title || item.url, page_age: item.page_age });
-                }
-              }
-            }
-
-            // Regular tool_result containing web_search_result items
-            if (block?.type === "tool_result") {
-              const items = Array.isArray(block.content) ? block.content : [];
-              for (const item of items) {
-                if (item.type === "web_search_result" && item.url) {
-                  if (!sources.find((s) => s.url === item.url)) {
-                    sources.push({ url: item.url, title: item.title || item.url, page_age: item.page_age });
-                  }
-                }
+            for (const item of items) {
+              const url = item.url;
+              if (url && !seenUrls.has(url)) {
+                seenUrls.add(url);
+                allSources.push({
+                  url,
+                  title: item.title || url,
+                  page_age: item.page_age,
+                  quality: classifySource(url),
+                });
               }
             }
           }
 
-          // Stream text deltas
           if (
             evt.type === "content_block_delta" &&
             evt.delta?.type === "text_delta" &&
             evt.delta.text
           ) {
+            textAccumulator += evt.delta.text;
             await writer.write(encoder.encode(evt.delta.text));
           }
         }
       }
 
-      // Append sources as a final sentinel chunk
-      if (sources.length > 0) {
-        await writer.write(
-          encoder.encode(`<!--SOURCES:${JSON.stringify(sources)}-->`)
-        );
-      }
+      const qualitySources = allSources.filter(s => s.quality !== 'low');
+      const verifiedCount = allSources.filter(s => s.quality === 'trusted').length;
+      const conflictingCount = (textAccumulator.match(/⚠️/g) || []).length;
+
+      const payload = JSON.stringify({
+        sources: qualitySources,
+        meta: {
+          scanned: allSources.length,
+          verified: verifiedCount,
+          conflicting: conflictingCount,
+          searchCount,
+          depth,
+        },
+      });
+      await writer.write(encoder.encode(`<!--DATA:${payload}-->`));
+
     } catch (err) {
       console.error("Stream error:", err);
       await writer.write(encoder.encode(`\n\n**Error:** ${err.message}`));

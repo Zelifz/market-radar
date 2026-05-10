@@ -160,81 +160,79 @@
       padding: 20px 24px;
     }
 
-    /* ── Sources ── */
-    .sources-block {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--surface2);
-      overflow: hidden;
-    }
-
-    .sources-toggle {
+    /* ── Sources (inline pills) ── */
+    .sources-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      color: var(--muted);
-      user-select: none;
-      transition: color 0.15s;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 10px 0 4px;
     }
-    .sources-toggle:hover { color: var(--text); }
 
-    .sources-toggle .arrow {
-      margin-left: auto;
-      font-size: 0.7rem;
-      transition: transform 0.2s;
-    }
-    .sources-toggle.open .arrow { transform: rotate(180deg); }
-
-    .sources-list {
-      display: none;
-      flex-direction: column;
-      gap: 1px;
-      border-top: 1px solid var(--border);
-    }
-    .sources-list.open { display: flex; }
-
-    .source-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 9px 14px;
-      font-size: 0.8rem;
-      text-decoration: none;
-      color: var(--muted);
-      transition: background 0.12s, color 0.12s;
-    }
-    .source-item:hover { background: var(--surface); color: var(--text); }
-
-    .source-num {
-      color: var(--accent2);
-      font-weight: 600;
-      flex-shrink: 0;
+    .sources-label {
       font-size: 0.72rem;
-      margin-top: 2px;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-right: 2px;
     }
 
-    .source-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-
-    .source-title {
-      color: var(--text);
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .source-url {
-      color: var(--accent2);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .src-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       font-size: 0.73rem;
+      color: var(--muted);
+      text-decoration: none;
+      white-space: nowrap;
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: border-color 0.15s, color 0.15s;
     }
+    .src-chip:hover { border-color: var(--accent2); color: var(--text); }
+    .src-chip.trusted { border-color: rgba(62,207,184,0.3); color: #a0e8df; }
 
-    .source-age { color: var(--muted); font-size: 0.7rem; flex-shrink: 0; margin-left: auto; }
+    .src-chip-more {
+      font-size: 0.72rem;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 3px 9px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: transparent;
+      font-family: inherit;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .src-chip-more:hover { color: var(--text); border-color: var(--muted); }
+
+    /* ── Transparency row ── */
+    .transparency-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 7px 0 2px;
+      font-size: 0.71rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+    .t-verified { color: var(--green); }
+    .t-warn { color: var(--warn); }
+    .t-cached {
+      font-size: 0.7rem;
+      color: var(--accent2);
+      padding: 2px 8px;
+      background: rgba(62,207,184,0.08);
+      border: 1px solid rgba(62,207,184,0.2);
+      border-radius: 8px;
+      margin-left: auto;
+    }
 
     /* ── Input area ── */
     .input-card {
@@ -288,30 +286,38 @@
     .submit-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
     .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* ── Examples ── */
-    .examples { margin-top: 14px; }
-
-    .examples-title {
-      font-size: 0.72rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 8px;
+    /* ── Follow-up buttons ── */
+    .follow-btns {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 8px 0 2px;
     }
 
-    .examples-grid { display: flex; gap: 7px; flex-wrap: wrap; }
-
-    .chip {
-      padding: 6px 13px;
+    .follow-btn {
+      padding: 4px 11px;
       background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      font-size: 0.8rem;
+      border-radius: 16px;
+      font-size: 0.77rem;
       color: var(--muted);
       cursor: pointer;
       transition: border-color 0.15s, color 0.15s;
+      font-family: inherit;
+      line-height: 1.5;
     }
-    .chip:hover { border-color: var(--accent2); color: var(--text); }
+    .follow-btn:hover { border-color: var(--accent2); color: var(--text); }
+
+    /* ── Trust score badge ── */
+    .trust-badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+    .trust-high { background: rgba(78,203,122,0.1); border: 1px solid rgba(78,203,122,0.3); color: var(--green); }
+    .trust-med  { background: rgba(240,184,109,0.1); border: 1px solid rgba(240,184,109,0.3); color: var(--warn); }
+    .trust-low  { background: rgba(240,109,124,0.1); border: 1px solid rgba(240,109,124,0.3); color: var(--error); }
 
     /* ── Loading ── */
     .loading {
@@ -498,11 +504,6 @@
     </div>
   </div>
 
-  <!-- Example queries -->
-  <div class="examples">
-    <div class="examples-title">Try an example</div>
-    <div class="examples-grid" id="chips"></div>
-  </div>
 
 </div>
 
@@ -513,67 +514,74 @@ const TABS = {
     placeholder: 'Describe your business idea or the market you want to analyze...',
     btnText: 'Analyze →',
     loading: 'Searching for market data...',
-    chips: [
-      'AI-powered drone delivery startup — what does the market look like?',
-      'B2B SaaS for restaurant inventory management — global opportunity?',
-      'On-demand mental health app for Gen Z — market size and trends',
-      'Climate tech: carbon credit marketplace opportunity',
-    ],
   },
   competitors: {
     label: 'Competitor Analysis',
     placeholder: 'Describe the product or space you want to analyze competitors for...',
     btnText: 'Find Competitors →',
     loading: 'Researching competitors...',
-    chips: [
-      'Notion alternatives — who are the key competitors and their weaknesses?',
-      'Compare top AI writing assistants: pricing, features, positioning',
-      'Who are the main players in B2B HR software for SMEs?',
-      'Competitive landscape for telemedicine platforms globally',
-    ],
   },
   validate: {
     label: 'Idea Validation',
     placeholder: 'Describe your business idea in detail — I\'ll validate it against real market data...',
     btnText: 'Validate →',
     loading: 'Validating your idea with real data...',
-    chips: [
-      'A marketplace for freelance industrial designers — is there real demand?',
-      'Subscription coffee tasting boxes — validate this business model',
-      'AI-powered legal document review for startups — viable idea?',
-      'Peer-to-peer tool rental platform — proceed, pivot, or stop?',
-    ],
   },
   deep: {
     label: 'Deep Dive',
     placeholder: 'Name the sector or technology you want a deep-dive analysis on...',
     btnText: 'Deep Dive →',
     loading: 'Building comprehensive sector analysis...',
-    chips: [
-      'Deep dive into the global precision agriculture market',
-      'Comprehensive analysis of the creator economy sector',
-      'Web3 gaming industry — full sector report',
-      'Buy Now Pay Later (BNPL) industry deep dive',
-    ],
   },
   crosscheck: {
     label: 'Cross-Check',
     placeholder: 'Paste the claims or research you want fact-checked...',
     btnText: 'Cross-Check →',
     loading: 'Verifying claims against live data...',
-    chips: [
-      'The global e-learning market will reach $1 trillion by 2032',
-      '95% of startups fail in the first year',
-      'Gen Z spends more time on TikTok than YouTube',
-      'Remote work has permanently shifted commercial real estate demand',
-    ],
   },
 };
 
 let activeTab = 'analyze';
 let busy = false;
-let conversationHistory = []; // [{role, content}]
+let conversationHistory = [];
 let messageCount = 0;
+
+// Session cache: key = `${tab}:${normalizedMsg}` → {text, sources, meta}
+const searchCache = new Map();
+
+function getCacheKey(tab, msg) {
+  return `${tab}:${msg.toLowerCase().replace(/\s+/g, ' ').trim()}`;
+}
+
+// Mirror of backend classifier — determines search depth label shown to user
+function classifyDepth(msg) {
+  const lower = msg.toLowerCase();
+  const deepSignals = ['analyze','analysis','comprehensive','deep dive','compare','landscape',
+    'sector','industry','market','competitive','validate','report','trends','forecast',
+    'projection','strategy','opportunities','challenges','full','complete','overview','research'];
+  const simpleSignals = ['what is','what are','who is','when was','when did','where is',
+    'how much does','how many','define','definition','price of','cost of','founded','headquarters'];
+  const hasDeep = deepSignals.some(k => lower.includes(k));
+  const hasSimple = simpleSignals.some(k => lower.includes(k));
+  if (hasSimple && !hasDeep && msg.length < 120) return 'simple';
+  if (hasDeep || msg.length > 150) return 'deep';
+  return 'moderate';
+}
+
+// Frontend source quality classifier (mirrors backend)
+const TRUSTED_DOMAINS_FE = new Set([
+  'reuters.com','bloomberg.com','wsj.com','ft.com','economist.com','apnews.com',
+  'bbc.com','nytimes.com','theguardian.com','techcrunch.com','wired.com','forbes.com',
+  'businessinsider.com','cnbc.com','hbr.org','mckinsey.com','bcg.com','statista.com',
+  'cbinsights.com','crunchbase.com','pitchbook.com','gartner.com','worldbank.org',
+  'imf.org','oecd.org','nature.com','arxiv.org','investopedia.com','wikipedia.org',
+]);
+function classifySourceFE(url) {
+  try {
+    const domain = new URL(url).hostname.replace('www.', '');
+    return TRUSTED_DOMAINS_FE.has(domain) ? 'trusted' : 'neutral';
+  } catch { return 'neutral'; }
+}
 
 const msgEl       = document.getElementById('msg');
 const sendBtn     = document.getElementById('send-btn');
@@ -584,7 +592,6 @@ const streamWrap  = document.getElementById('streaming-wrap');
 const streamCard  = document.getElementById('streaming-card');
 const streamLabel = document.getElementById('streaming-label');
 const streamStatus= document.getElementById('streaming-status');
-const chipsEl     = document.getElementById('chips');
 const clearBtn    = document.getElementById('clear-btn');
 
 // ── Tab switching ──
@@ -599,28 +606,17 @@ function setTab(id) {
   const cfg = TABS[id];
   msgEl.placeholder = cfg.placeholder;
   sendBtn.textContent = cfg.btnText;
-  renderChips();
 }
-
-function renderChips() {
-  const list = TABS[activeTab]?.chips || [];
-  chipsEl.innerHTML = list.map(c =>
-    `<div class="chip" onclick="fillExample(this)">${c}</div>`
-  ).join('');
-}
-
-window.fillExample = el => {
-  msgEl.value = el.textContent;
-  msgEl.focus();
-};
 
 // ── Clear session ──
 clearBtn.addEventListener('click', () => {
   conversationHistory = [];
   messageCount = 0;
+  searchCache.clear();
   convoEl.innerHTML = '';
   renderWelcome();
 });
+
 
 function renderWelcome() {
   if (conversationHistory.length === 0) {
@@ -654,19 +650,31 @@ async function analyze() {
   sendBtn.disabled = true;
   msgEl.value = '';
 
-  // Remove welcome screen
   const welcome = convoEl.querySelector('.welcome');
   if (welcome) welcome.remove();
 
-  // Add user message to UI
   appendUserBubble(msg);
 
-  // Show loading
+  // Check session cache first
+  const cacheKey = getCacheKey(activeTab, msg);
+  const cached = searchCache.get(cacheKey);
+  if (cached) {
+    appendAiMessage(cached.text, cached.sources, cached.meta, null, true, msg);
+    conversationHistory.push({ role: 'user', content: msg });
+    conversationHistory.push({ role: 'assistant', content: cached.text });
+    busy = false;
+    sendBtn.disabled = false;
+    msgEl.focus();
+    return;
+  }
+
+  const depth = classifyDepth(msg);
+  const depthLabel = depth === 'simple' ? '🔍 Quick search' : depth === 'deep' ? '🔭 Deep research' : '🔎 Standard search';
+
   loadTxt.textContent = TABS[activeTab]?.loading || 'Analyzing...';
   loadingEl.classList.add('on');
 
-  // Show streaming area
-  streamLabel.textContent = TABS[activeTab]?.label || 'Analysis';
+  streamLabel.textContent = `${TABS[activeTab]?.label || 'Analysis'} · ${depthLabel}`;
   streamStatus.innerHTML = '';
   streamCard.innerHTML = '';
   streamCard.classList.add('on');
@@ -674,6 +682,7 @@ async function analyze() {
 
   let fullText = '';
   let sources = [];
+  let meta = null;
 
   try {
     const res = await fetch('/api/analyze', {
@@ -702,17 +711,21 @@ async function analyze() {
       if (done) break;
       raw += decoder.decode(value, { stream: true });
 
-      // Extract and strip status markers
-      raw = raw.replace(/<!--STATUS:([^-]+)-->/g, (_, msg) => {
-        streamStatus.innerHTML = `<div class="status-pill"><div class="spinner" style="width:10px;height:10px;border-width:1.5px"></div>${escHtml(msg)}</div>`;
+      // Status markers
+      raw = raw.replace(/<!--STATUS:([^-]+)-->/g, (_, statusMsg) => {
+        streamStatus.innerHTML = `<div class="status-pill"><div class="spinner" style="width:10px;height:10px;border-width:1.5px"></div>${escHtml(statusMsg)}</div>`;
         return '';
       });
 
-      // Extract and strip sources sentinel at end
-      const srcMatch = raw.match(/<!--SOURCES:(\[[\s\S]*?\])-->$/);
-      if (srcMatch) {
-        try { sources = JSON.parse(srcMatch[1]); } catch {}
-        raw = raw.replace(/<!--SOURCES:.*-->$/, '');
+      // Combined data sentinel at end of stream
+      const dataMatch = raw.match(/<!--DATA:([\s\S]+)-->$/);
+      if (dataMatch) {
+        try {
+          const data = JSON.parse(dataMatch[1]);
+          sources = data.sources || [];
+          meta = data.meta || null;
+        } catch {}
+        raw = raw.replace(/<!--DATA:[\s\S]+-->$/, '');
       }
 
       fullText = raw;
@@ -723,12 +736,13 @@ async function analyze() {
     streamStatus.innerHTML = '';
     streamCard.innerHTML = marked.parse(fullText);
 
-    // Move streaming content into permanent conversation
     streamWrap.style.display = 'none';
     streamCard.classList.remove('on');
-    appendAiMessage(fullText, sources);
+    appendAiMessage(fullText, sources, meta, null, false, msg);
 
-    // Update conversation history
+    // Cache the result for this session
+    searchCache.set(cacheKey, { text: fullText, sources, meta });
+
     conversationHistory.push({ role: 'user', content: msg });
     conversationHistory.push({ role: 'assistant', content: fullText });
 
@@ -736,7 +750,7 @@ async function analyze() {
     loadingEl.classList.remove('on');
     streamWrap.style.display = 'none';
     streamCard.classList.remove('on');
-    appendAiMessage(null, [], err.message);
+    appendAiMessage(null, [], null, err.message, false, '');
   } finally {
     busy = false;
     sendBtn.disabled = false;
@@ -752,7 +766,7 @@ function appendUserBubble(text) {
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
-function appendAiMessage(text, sources, errorMsg) {
+function appendAiMessage(text, sources, meta, errorMsg, fromCache, userQuery) {
   messageCount++;
   const wrap = document.createElement('div');
   wrap.className = 'msg-ai';
@@ -760,7 +774,6 @@ function appendAiMessage(text, sources, errorMsg) {
   const header = document.createElement('div');
   header.className = 'msg-ai-header';
   header.innerHTML = `<div class="ai-dot">◎</div><span>${TABS[activeTab]?.label || 'Analysis'}</span>`;
-
   wrap.appendChild(header);
 
   if (errorMsg) {
@@ -774,8 +787,16 @@ function appendAiMessage(text, sources, errorMsg) {
     card.innerHTML = marked.parse(text);
     wrap.appendChild(card);
 
-    if (sources && sources.length > 0) {
-      wrap.appendChild(buildSourcesBlock(sources));
+    const footer = buildSourcesUI(sources || [], meta, fromCache);
+    if (footer) wrap.appendChild(footer);
+
+    // Dynamic follow-up buttons — skip for simple queries and cached responses
+    const depth = classifyDepth(userQuery || '');
+    if (depth !== 'simple') {
+      const btnsContainer = document.createElement('div');
+      btnsContainer.className = 'follow-btns';
+      wrap.appendChild(btnsContainer);
+      fetchSuggestions(text, activeTab, userQuery || '', btnsContainer);
     }
   }
 
@@ -783,48 +804,119 @@ function appendAiMessage(text, sources, errorMsg) {
   wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
-function buildSourcesBlock(sources) {
-  const block = document.createElement('div');
-  block.className = 'sources-block';
+async function fetchSuggestions(responseText, tab, userQuery, container) {
+  try {
+    const res = await fetch('/api/suggestions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responseText, tab, userQuery }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const buttons = data.buttons || [];
+    if (buttons.length === 0) return;
 
-  const toggle = document.createElement('div');
-  toggle.className = 'sources-toggle';
-  toggle.innerHTML = `
-    <span>🔗</span>
-    <span>${sources.length} source${sources.length > 1 ? 's' : ''} used</span>
-    <span class="arrow">▼</span>`;
+    buttons.forEach(btn => {
+      const el = document.createElement('button');
+      el.className = 'follow-btn';
+      el.textContent = btn.label;
+      el.addEventListener('click', () => {
+        if (busy) return;
+        msgEl.value = btn.query;
+        msgEl.focus();
+        analyze();
+      });
+      container.appendChild(el);
+    });
 
-  const list = document.createElement('div');
-  list.className = 'sources-list';
+    container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  } catch { /* silent — buttons are optional */ }
+}
 
-  sources.forEach((s, i) => {
-    const a = document.createElement('a');
-    a.className = 'source-item';
-    a.href = s.url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+function buildSourcesUI(sources, meta, fromCache) {
+  if (!sources.length && !meta) return null;
 
-    let domain = s.url;
-    try { domain = new URL(s.url).hostname.replace('www.', ''); } catch {}
+  const container = document.createElement('div');
 
-    a.innerHTML = `
-      <span class="source-num">${i + 1}</span>
-      <span class="source-info">
-        <span class="source-title">${escHtml(s.title || domain)}</span>
-        <span class="source-url">${escHtml(domain)}</span>
-      </span>
-      ${s.page_age ? `<span class="source-age">${escHtml(s.page_age)}</span>` : ''}`;
-    list.appendChild(a);
-  });
+  // ── Source pills row ──
+  if (sources.length > 0) {
+    const row = document.createElement('div');
+    row.className = 'sources-row';
 
-  toggle.addEventListener('click', () => {
-    toggle.classList.toggle('open');
-    list.classList.toggle('open');
-  });
+    const label = document.createElement('span');
+    label.className = 'sources-label';
+    label.textContent = '🔗 Sources:';
+    row.appendChild(label);
 
-  block.appendChild(toggle);
-  block.appendChild(list);
-  return block;
+    const MAX_VISIBLE = 5;
+    const visible = sources.slice(0, MAX_VISIBLE);
+    const overflow = sources.slice(MAX_VISIBLE);
+
+    visible.forEach(s => {
+      const a = document.createElement('a');
+      const quality = s.quality || classifySourceFE(s.url);
+      a.className = `src-chip${quality === 'trusted' ? ' trusted' : ''}`;
+      a.href = s.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      let domain = s.url;
+      try { domain = new URL(s.url).hostname.replace('www.', ''); } catch {}
+      const label = s.title && s.title !== s.url
+        ? s.title.replace(/\s*[-|].*$/, '').trim().slice(0, 40)
+        : domain;
+      a.title = s.title || domain;
+      a.textContent = label;
+      row.appendChild(a);
+    });
+
+    if (overflow.length > 0) {
+      const moreBtn = document.createElement('button');
+      moreBtn.className = 'src-chip-more';
+      moreBtn.textContent = `+${overflow.length} more`;
+      moreBtn.addEventListener('click', () => {
+        moreBtn.remove();
+        overflow.forEach(s => {
+          const a = document.createElement('a');
+          const quality = s.quality || classifySourceFE(s.url);
+          a.className = `src-chip${quality === 'trusted' ? ' trusted' : ''}`;
+          a.href = s.url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          let domain = s.url;
+          try { domain = new URL(s.url).hostname.replace('www.', ''); } catch {}
+          const lbl = s.title && s.title !== s.url
+            ? s.title.replace(/\s*[-|].*$/, '').trim().slice(0, 40)
+            : domain;
+          a.title = s.title || domain;
+          a.textContent = lbl;
+          row.appendChild(a);
+        });
+      });
+      row.appendChild(moreBtn);
+    }
+
+    container.appendChild(row);
+  }
+
+  // ── Transparency row ──
+  const trow = document.createElement('div');
+  trow.className = 'transparency-row';
+
+  const scanned = meta?.scanned ?? sources.length;
+  const verified = meta?.verified ?? 0;
+  const conflicting = meta?.conflicting ?? 0;
+
+  const trustClass = verified >= 2 ? 'trust-high' : verified === 1 ? 'trust-med' : 'trust-low';
+  const trustText  = verified >= 2 ? '✅ Verified' : verified === 1 ? '⚠️ Single source' : '❌ No sources';
+
+  trow.innerHTML = `<span>📡 ${scanned} scanned</span>`
+    + `<span class="t-verified">✅ ${verified} verified</span>`
+    + (conflicting > 0 ? `<span class="t-warn">⚠️ ${conflicting} conflicting</span>` : '')
+    + (fromCache ? `<span class="t-cached">⚡ from session cache</span>` : '')
+    + `<span class="trust-badge ${trustClass}" style="margin-left:auto">${trustText}</span>`;
+
+  container.appendChild(trow);
+  return container;
 }
 
 function escHtml(s) {
@@ -838,6 +930,7 @@ function escHtml(s) {
 // Init
 setTab('analyze');
 renderWelcome();
+
 </script>
 
 </body>
