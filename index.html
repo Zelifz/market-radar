@@ -202,6 +202,14 @@
       text-transform: uppercase;
       letter-spacing: 0.09em;
     }
+    .sa-vcount {
+      font-size: 0.7rem;
+      color: var(--green);
+      padding: 1px 7px;
+      background: rgba(78,203,122,0.08);
+      border: 1px solid rgba(78,203,122,0.25);
+      border-radius: 8px;
+    }
     .sa-stats {
       display: flex;
       gap: 12px;
@@ -694,15 +702,15 @@ async function analyze() {
         return '';
       });
 
-      // Combined data sentinel at end of stream
-      const dataMatch = raw.match(/<!--DATA:([\s\S]+)-->$/);
+      // Combined data sentinel at end of stream (non-greedy, tolerates trailing whitespace)
+      const dataMatch = raw.match(/<!--DATA:([\s\S]+?)-->\s*$/);
       if (dataMatch) {
         try {
           const data = JSON.parse(dataMatch[1]);
           sources = data.sources || [];
           meta = data.meta || null;
         } catch {}
-        raw = raw.replace(/<!--DATA:[\s\S]+-->$/, '');
+        raw = raw.replace(/<!--DATA:[\s\S]+?-->\s*$/, '');
       }
 
       fullText = raw;
@@ -711,10 +719,10 @@ async function analyze() {
     }
 
     streamStatus.innerHTML = '';
-    streamCard.innerHTML = marked.parse(fullText);
-
+    // Hide streaming area and immediately show final message (no intermediate re-render to avoid flash)
     streamWrap.style.display = 'none';
     streamCard.classList.remove('on');
+    streamCard.innerHTML = '';
     appendAiMessage(fullText, sources, meta, null, false, msg);
 
     // Cache the result for this session
@@ -846,7 +854,7 @@ function buildSourcesUI(sources, meta, fromCache) {
   const titleRow = document.createElement('div');
   titleRow.className = 'sa-title-row';
   titleRow.innerHTML = `<span class="sa-title">Source Analysis</span>`
-    + `<span class="trust-badge ${trustClass}">${trustText}</span>`
+    + (verified > 0 ? `<span class="sa-vcount">${verified} verified</span>` : '')
     + (fromCache ? `<span class="t-cached">⚡ cached</span>` : '');
   sa.appendChild(titleRow);
 
