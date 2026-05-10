@@ -1,72 +1,110 @@
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 const SYSTEM_PROMPTS = {
-  analiz: `Sen Türkiye pazarı konusunda uzman bir iş ve girişim danışmanısın. Kullanıcının iş fikrini veya sektörünü Türkiye özelinde analiz et.
-Şunları değerlendir:
-- Türkiye'deki pazar büyüklüğü ve potansiyeli
-- Hedef kitle profili ve büyüklüğü
-- Temel fırsatlar ve tehditler
-- Büyüme trendleri ve ivme
-- Türkiye'ye özgü faktörler (ekonomi, kültür, düzenlemeler)
-- Giriş için pratik adımlar
+  analyze: `You are a senior global market research analyst. You have web search access — use it for EVERY analysis to find real, current data.
 
-Yanıtını Türkçe, markdown formatında ver. Somut ve pratik ol, gereksiz süslü cümlelerden kaçın.`,
+Required for every response:
+- Search for actual market size figures (cite the source and year)
+- Find recent news and funding activity in this space (last 12 months)
+- Identify key demand signals (search trends, community activity, job postings)
+- Look for regulatory or geographic considerations
+- Flag any data points that seem outdated or conflicting
 
-  haberler: `Sen Türk iş dünyası ve teknoloji haberleri konusunda uzman bir analistsin.
-Kullanıcının belirttiği sektör veya fikirle ilgili şunları sun:
-- Sektördeki son dönem önemli gelişmeler ve trendler
-- Yatırım haberleri ve fonlama turları
-- Hükümet politikaları, teşvikler ve düzenlemeler
-- Global trendlerin Türkiye'ye yansıması
-- Sektörü etkileyen makroekonomik faktörler
+Structure your response:
+## Market Overview
+## Opportunity Signals
+## Key Risks & Challenges
+## Regional Considerations
+## Next Steps
 
-Yanıtını Türkçe, markdown formatında ver. Güncel ve bilgilendirici ol.`,
+After every data point, add a source link in format: ([Source Name](URL))
+Use real numbers. Never say "large market" — say "$12.4B (Statista 2024)".`,
 
-  rakipler: `Sen Türkiye pazarında rekabet analizi uzmanısın.
-Kullanıcının belirttiği alan için:
-- Türkiye'deki başlıca oyuncuları ve konumlanmalarını listele
-- Her oyuncunun güçlü ve zayıf yönlerini analiz et
-- Pazar payı dağılımını tahmin et
-- Fiyatlama stratejilerini karşılaştır
-- Rakiplerin göz ardı ettiği boş niş fırsatları tespit et
-- Diferansiyasyon için somut öneriler sun
+  competitors: `You are a competitive intelligence analyst. Use web search to find REAL competitor data — not guesses.
 
-Yanıtını Türkçe, markdown formatında ver. Gerçek şirket isimlerine atıf yap.`,
+For each competitor found:
+1. Search their website, Crunchbase, LinkedIn for funding/team size
+2. Find pricing (check their pricing page directly)
+3. Search G2, Capterra, Trustpilot for reviews — find actual weaknesses
+4. Check recent news for strategic moves
 
-  dogrulama: `Sen iş fikri doğrulama uzmanısın. Kullanıcının fikrini eleştirel ve dengeli bir gözle değerlendir.
-Şunları analiz et:
-- Fikrin güçlü yönleri (neden çalışabilir)
-- Kritik riskler ve zayıflıklar (neden çalışmayabilir)
-- Türkiye pazarına uygunluk ve zamanlama
-- Doğrulama için önerilen MVP adımları
-- İlk 6 ayda test etmen gereken varsayımlar
-- Başarı için kritik faktörler (KSF)
-- Genel değerlendirme: Devam et / Pivotla / Durdur
+Structure:
+## Competitive Landscape Overview
+## Key Players
+(Name | Founded | Funding | Target Market | Pricing | Key Weakness)
+## Market Gaps & Opportunities
+## Differentiation Playbook
 
-Dürüst ve doğrudan ol. Yanıtını Türkçe, markdown formatında ver.`,
+Cite every source. Mark unverified estimates clearly with ⚠️.`,
 
-  derinlik: `Sen derin sektör analizi yapan stratejik bir danışmansın.
-Kullanıcının belirttiği konu için kapsamlı analiz sun:
-- Sektörün Türkiye'deki tarihsel gelişimi ve mevcut durumu
-- Porter'ın 5 Gücü analizi (Türkiye bağlamında)
-- SWOT analizi
-- Düzenleyici çerçeve ve lisans/sertifika gereksinimleri
-- Tedarik zinciri ve ekosistem haritası
-- Teknoloji trendleri ve dijital dönüşüm etkileri
-- 3-5 yıllık pazar büyüme projeksiyonu
-- Stratejik giriş önerileri
+  validate: `You are a rigorous startup idea validator. Use web search to prove or disprove every assumption — challenge the idea hard.
 
-Akademik derinlikte ama pratik odaklı. Yanıtını Türkçe, markdown formatında ver.`,
+Validation framework (run web searches for each):
+1. **Problem Reality Check** — Is this a real problem people pay to solve? Find evidence.
+2. **Market Size Verification** — Find TAM/SAM data from analyst reports (not guesses)
+3. **Existing Solutions** — Who is already solving this? Why do they succeed or fail?
+4. **Demand Signals** — Search Reddit, forums, job boards, Google Trends for genuine demand
+5. **Business Model Comparables** — Find similar business models and their unit economics
+6. **Fatal Flaw Check** — What could kill this idea? Regulation, timing, competition?
+
+Cross-check every major claim against 2+ sources. If sources conflict, highlight it.
+
+End with:
+## ✅ Proceed / ⚠️ Pivot / ❌ Stop
+**Verdict**: [Your honest assessment]
+**Confidence Level**: High / Medium / Low
+**Key Assumptions to Test First**: [list]`,
+
+  deep: `You are a strategic analyst delivering deep-dive sector research. Use web search extensively — multiple searches per section.
+
+Deliver a comprehensive report:
+## 1. Sector Overview
+(Size, growth CAGR, major sub-segments — with real data)
+## 2. Porter's Five Forces
+(Each force rated Low/Medium/High with evidence)
+## 3. SWOT Analysis
+(Market-level SWOT, not generic)
+## 4. Regulatory Landscape
+(Key regulations, compliance requirements, upcoming changes)
+## 5. Technology & Disruption Trends
+(What tech is changing this sector, find real examples)
+## 6. Key Players & Market Share
+(Top companies, estimated market share)
+## 7. Growth Projections
+(3-5 year outlook — cite analyst reports like McKinsey, CB Insights, etc.)
+## 8. Entry Strategy Recommendations
+(Specific, actionable)
+
+Every data point must have a source citation. Note data recency.`,
+
+  crosscheck: `You are a market research fact-checker. Your job is to verify or refute claims using web search.
+
+For EACH claim the user provides:
+1. Search for the most recent supporting data
+2. Search for contradicting data
+3. Check the original source if cited
+4. Find independent verification
+
+Format each finding:
+---
+**Claim**: [the claim]
+**Verdict**: ✅ VERIFIED | ⚠️ PARTIALLY TRUE | ❌ CONTRADICTED | ❓ UNVERIFIABLE
+**Evidence For**: [what supports it, with source]
+**Evidence Against**: [what contradicts it, with source]
+**Most Recent Data**: [latest figure found, with source and date]
+**Confidence**: HIGH | MEDIUM | LOW
+---
+
+At the end, provide an overall reliability score for the research and flag the most critical corrections.`,
 };
 
 export default async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
+    return new Response(null, { status: 204, headers: CORS });
   }
 
   if (req.method !== "POST") {
@@ -77,21 +115,29 @@ export default async (req) => {
   try {
     body = await req.json();
   } catch {
-    return new Response("Geçersiz istek gövdesi", { status: 400 });
+    return new Response("Invalid request body", { status: 400 });
   }
 
-  const { message, tab = "analiz" } = body;
+  const { message, tab = "analyze", history = [] } = body;
 
   if (!message?.trim()) {
-    return new Response("Mesaj boş olamaz", { status: 400 });
+    return new Response("Message cannot be empty", { status: 400 });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return new Response("API anahtarı yapılandırılmamış", { status: 500 });
+    return new Response("API key not configured", { status: 500 });
   }
 
-  const systemPrompt = SYSTEM_PROMPTS[tab] || SYSTEM_PROMPTS.analiz;
+  const systemPrompt = SYSTEM_PROMPTS[tab] || SYSTEM_PROMPTS.analyze;
+
+  // Keep last 12 messages to avoid token overflow
+  const trimmedHistory = history.slice(-12);
+
+  const messages = [
+    ...trimmedHistory,
+    { role: "user", content: message.trim() },
+  ];
 
   let anthropicRes;
   try {
@@ -104,22 +150,28 @@ export default async (req) => {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 2048,
+        max_tokens: 4096,
         stream: true,
         system: systemPrompt,
-        messages: [{ role: "user", content: message.trim() }],
+        tools: [
+          {
+            type: "web_search_20250305",
+            name: "web_search",
+            max_uses: 5,
+          },
+        ],
+        messages,
       }),
     });
   } catch (err) {
-    return new Response(`API bağlantı hatası: ${err.message}`, { status: 502 });
+    return new Response(`API connection error: ${err.message}`, { status: 502 });
   }
 
   if (!anthropicRes.ok) {
     const errText = await anthropicRes.text();
-    return new Response(`Anthropic API hatası: ${errText}`, { status: 502 });
+    return new Response(`Anthropic API error: ${errText}`, { status: 502 });
   }
 
-  // SSE akışını düz metin akışına dönüştür
   const encoder = new TextEncoder();
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
@@ -129,6 +181,8 @@ export default async (req) => {
       const reader = anthropicRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      const sources = [];
+      let searchCount = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -140,26 +194,71 @@ export default async (req) => {
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
+          const raw = line.slice(6).trim();
+          if (raw === "[DONE]") continue;
 
-          try {
-            const parsed = JSON.parse(data);
-            if (
-              parsed.type === "content_block_delta" &&
-              parsed.delta?.type === "text_delta" &&
-              parsed.delta.text
-            ) {
-              await writer.write(encoder.encode(parsed.delta.text));
+          let evt;
+          try { evt = JSON.parse(raw); } catch { continue; }
+
+          // Tool use started — signal "searching" to frontend
+          if (
+            evt.type === "content_block_start" &&
+            evt.content_block?.type === "tool_use" &&
+            evt.content_block?.name === "web_search"
+          ) {
+            searchCount++;
+            await writer.write(
+              encoder.encode(`<!--STATUS:Searching the web (${searchCount})...-->`)
+            );
+          }
+
+          // Extract sources from web_search_tool_result blocks
+          if (evt.type === "content_block_start") {
+            const block = evt.content_block;
+
+            // web_search_tool_result type (built-in search results)
+            if (block?.type === "web_search_tool_result") {
+              const items = block.content || [];
+              for (const item of items) {
+                if (item.url && !sources.find((s) => s.url === item.url)) {
+                  sources.push({ url: item.url, title: item.title || item.url, page_age: item.page_age });
+                }
+              }
             }
-          } catch {
-            // Hatalı SSE satırlarını atla
+
+            // Regular tool_result containing web_search_result items
+            if (block?.type === "tool_result") {
+              const items = Array.isArray(block.content) ? block.content : [];
+              for (const item of items) {
+                if (item.type === "web_search_result" && item.url) {
+                  if (!sources.find((s) => s.url === item.url)) {
+                    sources.push({ url: item.url, title: item.title || item.url, page_age: item.page_age });
+                  }
+                }
+              }
+            }
+          }
+
+          // Stream text deltas
+          if (
+            evt.type === "content_block_delta" &&
+            evt.delta?.type === "text_delta" &&
+            evt.delta.text
+          ) {
+            await writer.write(encoder.encode(evt.delta.text));
           }
         }
       }
+
+      // Append sources as a final sentinel chunk
+      if (sources.length > 0) {
+        await writer.write(
+          encoder.encode(`<!--SOURCES:${JSON.stringify(sources)}-->`)
+        );
+      }
     } catch (err) {
-      console.error("Stream hatası:", err);
-      await writer.write(encoder.encode(`\n\n**Hata:** ${err.message}`));
+      console.error("Stream error:", err);
+      await writer.write(encoder.encode(`\n\n**Error:** ${err.message}`));
     } finally {
       await writer.close();
     }
@@ -167,14 +266,12 @@ export default async (req) => {
 
   return new Response(readable, {
     headers: {
+      ...CORS,
       "Content-Type": "text/plain; charset=utf-8",
-      "Access-Control-Allow-Origin": "*",
       "Cache-Control": "no-cache",
       "X-Accel-Buffering": "no",
     },
   });
 };
 
-export const config = {
-  path: "/api/analyze",
-};
+export const config = { path: "/api/analyze" };
