@@ -47,7 +47,22 @@ function classifySource(url) {
 // brainstorm= idea generation, creative exploration, open questions
 
 function classifyMode(message, history = []) {
-  const lower = message.toLowerCase();
+  const lower = message.toLowerCase().trim();
+  const len = message.trim().length;
+
+  // Chat: casual/conversational — no research intent at all
+  const chatSignals = [
+    'nasıl gidiyor', 'ne haber', 'naber', 'merhaba', 'selam', 'hey', 'hi ',
+    'teşekkür', 'sağol', 'eyvallah', 'tamam', 'peki', 'anladım', 'harika',
+    'güzel', 'süper', 'çok iyi', 'iyi günler', 'görüşürüz', 'hoşça kal',
+    'hello', 'thanks', 'thank you', 'ok', 'got it', 'great', 'nice', 'cool',
+  ];
+  const isChatSignal = chatSignals.some(k => lower.includes(k));
+  // Very short messages with no clear research keyword = chat
+  const hasResearchKeyword = ['pazar','market','rakip','sektör','analiz','gelir',
+    'büyüklük','strateji','fırsat','risk','teknoloji','yapay zeka','ai ','llm'].some(k => lower.includes(k));
+  if (isChatSignal && !hasResearchKeyword) return 'chat';
+  if (len < 12 && !hasResearchKeyword) return 'chat';
 
   // Brainstorm: explicit creative/ideation intent
   const brainstormSignals = [
@@ -162,6 +177,8 @@ const LANG_RULE = '🇹🇷 **DİL — KESİN KURAL: Yanıtını tamamen Türkç
 
 // Mode prompts (override tab prompts when mode != research)
 const MODE_PROMPTS = {
+  chat: `Sen Market Radar pazar araştırma asistanısın. Kullanıcı sana sıradan bir sohbet mesajı gönderdi.
+1-2 cümleyle samimi yanıtla, sonra ne araştırmak istediklerini sor. Türkçe yaz.`,
   brainstorm: `${LANG_RULE}
 
 Sen yaratıcı bir strateji ve inovasyon partnerisin. Kullanıcı artık veri değil, fikir ve olasılık istiyor.
@@ -300,10 +317,8 @@ export default async function handler(req) {
       let searchCount = 0;
 
       if (tavilyKey) {
-        if (mode === 'brainstorm') {
-          // Brainstorm: no search needed — pure creativity
-          // (optionally a light inspirational search could go here)
-        } else if (mode === 'discuss') {
+        if (mode === 'chat' || mode === 'brainstorm') {
+          // No search — pure AI response
           // Discuss: single light search for context/grounding
           await writer.write(encoder.encode(`<!--STATUS:🔍 Bağlam aranıyor...-->`));
           allResults = await search(message.trim(), tavilyKey, 'basic', 5);
@@ -327,11 +342,13 @@ export default async function handler(req) {
         allResults = dedupeAndSort(allResults);
       }
 
-      const statusLabel = mode === 'brainstorm'
-        ? '💡 Fikirler üretiliyor...'
-        : mode === 'discuss'
-          ? '🧠 Derinlemesine düşünülüyor...'
-          : '🤖 Analiz yapılıyor...';
+      const statusLabel = mode === 'chat'
+        ? '💬 Yanıtlanıyor...'
+        : mode === 'brainstorm'
+          ? '💡 Fikirler üretiliyor...'
+          : mode === 'discuss'
+            ? '🧠 Derinlemesine düşünülüyor...'
+            : '🤖 Analiz yapılıyor...';
       await writer.write(encoder.encode(`<!--STATUS:${statusLabel}-->`));
 
       const searchContext = allResults.length
@@ -346,7 +363,7 @@ export default async function handler(req) {
         content: m.content.slice(0, 800), // trim long history entries
       }));
 
-      const maxTokens    = mode === 'research' ? 2000 : mode === 'discuss' ? 1400 : 1000;
+      const maxTokens    = mode === 'chat' ? 200 : mode === 'research' ? 2000 : mode === 'discuss' ? 1400 : 1000;
       const temperature  = mode === 'brainstorm' ? 0.75 : mode === 'discuss' ? 0.6 : 0.45;
       const messages     = [
         { role: 'system', content: systemPrompt },
