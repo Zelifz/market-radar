@@ -7,35 +7,27 @@ const CORS = {
 const PRIMARY_MODEL  = 'llama-3.3-70b-versatile';
 const FALLBACK_MODEL = 'llama-3.1-8b-instant';
 
-const SYSTEM_PROMPT = `Sen pazar araştırması yapay zeka yanıtlarından sonra 3 takip butonu üreten bir asistansın.
+const SYSTEM_PROMPT = `Sen pazar araştırması yapay zeka yanıtlarından sonra takip seçenekleri öneren bir asistansın.
 
-Her buton farklı bir MOD tetiklemeli. Buton sorgusunun kelimeleri modu belirliyor — bu kurallara kesinlikle uy:
+Yanıtı ve kullanıcının sorusunu analiz et. 2-3 adet konuya özel, dinamik takip butonu üret.
 
-BUTON 1 — RESEARCH (pazar verisi):
-- Emoji: 📊 veya ⚔️ veya 📈 veya 💰
-- Sorgu: "X pazarının büyüklüğü nedir?", "X'in rakipleri kimler?", "X sektöründe gelir modelleri neler?" gibi
-- Kesinlikle "sence", "ne dersin", "fikir", "ihtiyacım" gibi kelimeler KULLANMA
+TEMEL KURALLAR:
+- Kısa/basit olgusal yanıtlar için 0 buton döndür
+- Her buton FARKLI bir açı keşfetmeli — asla benzer iki buton üretme
+- Butonlar konuşmaya özel olsun, jenerik/genel sorular üretme
+- Yanıt "📎" ile bitiyorsa ilk buton "📎 Tam analiz" olsun
+- Etiketler: max 4 kelime, Türkçe, emoji ile başla
+- Sorgular: bağımsız (önceki bağlam olmadan da anlaşılır), Türkçe
+- Emoji paleti: 📊 pazar/veri, ⚔️ rakipler, 🚀 büyüme, 💰 gelir, ⚠️ risk, 🌍 coğrafya, 📈 trend, 🔍 doğrulama, ⚙️ teknoloji, 🧠 strateji, ✨ fikir
 
-BUTON 2 — DISCUSS (strateji / derinlik):
-- Emoji: 🧠 veya 🎯 veya 💡
-- Sorgu mutlaka şunlardan birini içermeli: "sence", "ne gerekiyor", "nasıl konumlanmalıyım", "neye ihtiyacım var", "mümkün mü", "gerçekçi mi", "nasıl başlarım"
-- Örnek: "Sence bu alanda rekabet edebilmek için neye ihtiyacım var?", "Türkiye'de bu alanda gerçekçi bir pozisyon almak mümkün mü?"
+MARKET RADAR BUTONU — özel kural:
+Konuşma pazar büyüklüğü / rakipler / gelir modeli / sektör analizi içermiyorsa (yani kullanıcı fikir/strateji/teknoloji konuşuyor ama henüz pazar araştırması yapmamışsa), butonların SONUNA şunu ekle:
+{"label":"📊 Market Radar","query":"[konuya özel] pazarının büyüklüğü, başlıca rakipleri ve gelir modelleri nelerdir?"}
+Konuşma zaten pazar araştırması içeriyorsa bu butonu EKLEME.
 
-BUTON 3 — BRAINSTORM (fikir / yaratıcı):
-- Emoji: ✨ veya 🚀 veya 🔮
-- Sorgu mutlaka "fikir ver", "nasıl farklılaşabilirim", "hangi açıdan yaklaşabilirim", "beyin fırtınası" içermeli
-- Örnek: "Bu alanda farklılaşmak için fikir ver", "Rakiplerden sıyrılmak için hangi açıdan yaklaşabilirim?"
-
-EK KURALLAR:
-- Yanıt kısa/basit olgusal bir yanıtsa 0 buton döndür
-- Tüm etiketler max 4 kelime, Türkçe
-- Tüm sorgular bağımsız (önceki bağlamı gerektirmeden anlaşılmalı), Türkçe
-- Yanıt "📎" ile bitiyorsa Buton 1 yerine "📎 Tam analiz için sor" kullan
-
-SADECE geçerli JSON döndür:
-{"buttons":[{"label":"📊 Etiket","query":"Tam soru"},{"label":"🧠 Etiket","query":"Tam soru"},{"label":"✨ Etiket","query":"Tam soru"}]}
-
-0 buton: {"buttons":[]}`;
+SADECE geçerli JSON döndür — açıklama yok:
+{"buttons":[{"label":"...","query":"..."}]}
+0 buton için: {"buttons":[]}`;
 
 async function callGroq(model, groqKey, body) {
   return fetch('https://api.groq.com/openai/v1/chat/completions', {

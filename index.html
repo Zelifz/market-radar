@@ -334,6 +334,18 @@
     .follow-btn:nth-child(3n+3) { border-color: rgba(240,184,109,0.35); color: #e8b86a; }
     .follow-btn:nth-child(3n+3):hover { border-color: var(--warn); color: #f0cc8a; background: rgba(240,184,109,0.08); }
 
+    .follow-btn-radar {
+      border-color: rgba(62,207,184,0.5) !important;
+      color: var(--accent2) !important;
+      background: rgba(62,207,184,0.05) !important;
+      font-weight: 600;
+    }
+    .follow-btn-radar:hover {
+      border-color: var(--accent2) !important;
+      background: rgba(62,207,184,0.12) !important;
+      color: #90ede4 !important;
+    }
+
     /* ── Trust badge ── */
     .trust-badge {
       font-size: 0.7rem;
@@ -1486,7 +1498,8 @@ async function fetchSuggestions(responseText, tab, userQuery, container) {
 
     buttons.forEach(btn => {
       const el = document.createElement('button');
-      el.className = 'follow-btn';
+      const isMarketRadar = btn.label.includes('Market Radar');
+      el.className = isMarketRadar ? 'follow-btn follow-btn-radar' : 'follow-btn';
       el.textContent = btn.label;
       el.addEventListener('click', () => {
         if (busy) return;
