@@ -15,9 +15,8 @@ const TRUSTED_DOMAINS = new Set([
   'sec.gov','census.gov','bls.gov','worldbank.org','imf.org','oecd.org',
   'gartner.com','idc.com','forrester.com','nielsen.com',
   'nature.com','science.org','arxiv.org','investopedia.com','wikipedia.org',
-  'shopify.com/blog','a16z.com','sequoiacap.com','ycombinator.com',
-  'venturebeat.com','thenextweb.com','arstechnica.com','theatlantic.com',
-  'ft.com','handelsblatt.com','nikkei.com','scmp.com',
+  'a16z.com','sequoiacap.com','ycombinator.com','venturebeat.com',
+  'thenextweb.com','arstechnica.com','nikkei.com','scmp.com',
 ]);
 
 const LOW_QUALITY_DOMAINS = new Set([
@@ -26,7 +25,6 @@ const LOW_QUALITY_DOMAINS = new Set([
   'reddit.com','medium.com','substack.com','blogspot.com','wordpress.com',
   'yahoo.com','answers.com','ask.com','ehow.com','wikihow.com',
   'buzzfeed.com','huffpost.com','dailymail.co.uk','thesun.co.uk',
-  'fiverr.com','upwork.com','freelancer.com','guru.com',
 ]);
 
 function classifySource(url) {
@@ -34,25 +32,63 @@ function classifySource(url) {
     const domain = new URL(url).hostname.replace('www.', '');
     if (TRUSTED_DOMAINS.has(domain)) return 'trusted';
     if (LOW_QUALITY_DOMAINS.has(domain)) return 'low';
-    // Extra low-quality signals
-    if (domain.includes('blog.') || domain.endsWith('.blogspot.com')) return 'low';
+    if (domain.includes('blogspot') || domain.includes('.blog.')) return 'low';
     return 'neutral';
   } catch { return 'neutral'; }
 }
 
+// ─── MODE DETECTION ──────────────────────────────────────────────────────────
+// Determines HOW to respond, separate from WHAT tab is active.
+// research  = structured data with sources (default)
+// discuss   = deep thinking, perspective, context — flowing prose
+// brainstorm= idea generation, creative exploration, open questions
+
+function classifyMode(message, history = []) {
+  const lower = message.toLowerCase();
+  const len = message.trim().length;
+
+  const brainstormSignals = [
+    'fikir', 'beyin fırtınası', 'brainstorm', 'hayal', 'öneri ver', 'seçenek',
+    'alternatif', 'ne yapabilirim', 'nasıl yaklaşayım', 'hangi yol', 'olasılık',
+    'what if', 'how might', 'imagine', 'suggest', 'options', 'ideas for',
+    'yenilik', 'inovasyon', 'farklı bir açı', 'daha iyi bir yol',
+  ];
+
+  const discussSignals = [
+    'nasıl gelişecek', 'geleceği', 'gelecekte', 'evrimi', 'yönü nereye',
+    'sence', 'ne dersin', 'düşüncen', 'görüşün', 'fikrin ne',
+    'neden böyle', 'niye', 'mantığı ne', 'önemi ne', 'anlamı ne',
+    'toplumsal', 'etki', 'dönüşüm', 'değişim nasıl', 'tarihsel',
+    'why is', 'how will', 'what do you think', 'your view', 'in your opinion',
+    'what makes', 'why does', 'how does this', 'peki ya', 'ya da',
+  ];
+
+  const hasBrainstorm = brainstormSignals.some(k => lower.includes(k));
+  const hasDiscuss = discussSignals.some(k => lower.includes(k));
+
+  if (hasBrainstorm) return 'brainstorm';
+  if (hasDiscuss) return 'discuss';
+
+  // Short follow-up mid-conversation = user wants to think, not research again
+  if (history.length >= 4 && len < 80 && !lower.includes('pazar') && !lower.includes('market') && !lower.includes('rakip')) {
+    return 'discuss';
+  }
+
+  return 'research';
+}
+
+// ─── DEPTH DETECTION (for research mode) ─────────────────────────────────────
 function classifyDepth(message) {
   const lower = message.toLowerCase();
   const deepSignals = [
-    'analyze','analysis','comprehensive','deep dive','deep-dive','compare','comparison',
-    'landscape','sector','industry','market','competitive','validate','report',
-    'trends','forecast','projection','strategy','opportunities','challenges',
-    'full','complete','overview','breakdown','research','analiz','pazar','rekabet',
-    'sektör','strateji','fırsat','tehdit','büyüme','gelecek','tahmin',
+    'analyze','analysis','comprehensive','deep dive','compare','landscape',
+    'sector','industry','market','competitive','validate','report','trends',
+    'forecast','projection','strategy','opportunities','challenges','research',
+    'analiz','pazar','rakip','sektör','strateji','fırsat','büyüme','tahmin',
   ];
   const simpleSignals = [
-    'what is','what are','who is','when was','when did','where is',
-    'how much does','how many','define','definition','price of','cost of',
-    'founded','headquarters','nedir','kimdir','ne zaman','kaç',
+    'what is','what are','who is','when was','how much does','how many',
+    'define','price of','cost of','founded','nedir','kimdir','ne zaman','kaç',
   ];
   const hasDeep = deepSignals.some(k => lower.includes(k));
   const hasSimple = simpleSignals.some(k => lower.includes(k));
@@ -63,14 +99,14 @@ function classifyDepth(message) {
 
 function buildAngleQuery(message, tab) {
   const base = message.trim();
-  const suffixes = {
+  const map = {
     analyze:     `${base} market size revenue statistics 2024 2025`,
-    competitors: `${base} top companies competitors market share comparison`,
-    validate:    `${base} customer problems demand pain points failure cases`,
-    deep:        `${base} industry outlook trends disruption future growth`,
+    competitors: `${base} top companies market share comparison`,
+    validate:    `${base} customer problems demand failure cases`,
+    deep:        `${base} industry trends disruption future`,
     crosscheck:  base,
   };
-  return suffixes[tab] || `${base} latest data report 2025`;
+  return map[tab] || `${base} latest report 2025`;
 }
 
 async function search(query, apiKey, depth = 'moderate', maxResults = 8) {
@@ -93,23 +129,15 @@ async function search(query, apiKey, depth = 'moderate', maxResults = 8) {
   } catch { return []; }
 }
 
-function dedupeResults(results) {
+function dedupeAndSort(results) {
   const seen = new Set();
-  return results.filter(r => {
-    if (!r.url || seen.has(r.url)) return false;
-    seen.add(r.url);
-    return true;
-  });
-}
-
-function sortByQuality(results) {
-  const rank = r => {
-    const q = classifySource(r.url);
-    if (q === 'low') return 0;
-    if (q === 'trusted') return 2;
-    return 1;
-  };
-  return [...results].sort((a, b) => rank(b) - rank(a));
+  return results
+    .filter(r => { if (!r.url || seen.has(r.url)) return false; seen.add(r.url); return true; })
+    .filter(r => classifySource(r.url) !== 'low')
+    .sort((a, b) => {
+      const rank = r => classifySource(r.url) === 'trusted' ? 2 : 1;
+      return rank(b) - rank(a);
+    });
 }
 
 function formatResultsForAI(results) {
@@ -119,126 +147,139 @@ function formatResultsForAI(results) {
   ).join('\n\n');
 }
 
-// ─── SYSTEM PROMPTS ──────────────────────────────────────────────────────────
-// All prompts enforce Turkish language as the very first and last rule.
+// ─── SYSTEM PROMPTS ───────────────────────────────────────────────────────────
 
-const COMMON_SUFFIX = `
+const LANG_RULE = '🇹🇷 **DİL — KESİN KURAL: Yanıtını tamamen Türkçe yaz. Başka dil kullanma.**';
 
-**FORMAT — katı kural:**
-## başlıkları kullan. Her başlık altında 3-5 madde. Önemli rakamları ve kaynak adlarını **kalın** yaz.
-Toplam yanıt: 300-450 kelime. Daha fazla derinlik gerekiyorsa son maddeye "📎 Tam analiz için sor." ekle.
+// Mode prompts (override tab prompts when mode != research)
+const MODE_PROMPTS = {
+  brainstorm: `${LANG_RULE}
 
-**DÜRÜSTLÜK — pazarlık götürmez:**
-- Her piyasa büyüklüğü iddiasında: rakam + kaynak + yıl zorunlu. "Büyük pazar" gibi belirsiz ifade kullanma.
-- Alanda güçlü bir oyuncu varsa ilk cümlede söyle.
-- Pivot gerekiyorsa tam olarak ne olduğunu belirt.
-- Fikir imkânsızsa söyle, sonra en yakın gerçekçi versiyonu öner.
+Sen yaratıcı bir strateji ve inovasyon partnerisin. Kullanıcı artık veri değil, fikir ve olasılık istiyor.
 
-**KAYNAK ETİKETLEME:**
-- 2+ kaynak onaylıyor: ✅ **$X** *(Reuters + Statista, 2024)*
-- Tek kaynak: ⚠️ **$X** *(Forbes, 2024 — tek kaynak)*
+YAPMA:
+- ## başlıklar, madde madde liste, kaynak zorunluluğu
+- "Pazar büyüklüğü X dolardır" gibi kuru veri tekrarı
+- Her konuya aynı reçete
 
-Sona ekle:
-> **Güven:** ✅ YÜKSEK — [neden] | ⚠️ ORTA — [neden] | ❌ DÜŞÜK — [neden]
+YAP:
+- Beklenmedik açılardan yaklaş: "Herkes X yapıyor, ama şunu hiç düşündün mü?"
+- Somut ve uygulabilir fikirler üret — soyut kalma
+- Benzer alandaki başka sektörlerden analoji kur
+- Kullanıcının söylediklerini birbirine bağla, yeni kombinasyonlar üret
+- 1-2 açıcı soruyla bitir: kullanıcıyı bir sonraki adıma taşı
 
-**🇹🇷 DİL — KESİN KURAL: Yanıtını tamamen Türkçe yaz. İngilizce, Tayca veya başka bir dil kesinlikle kullanma.**`;
+Ton: Enerjik, meraklı, ilham verici — ama sığ değil. Format: 2-3 akıcı paragraf.`,
 
-const SYSTEM_PROMPTS = {
-  analyze: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
+  discuss: `${LANG_RULE}
 
-Sen sert bir pazar araştırma analistsin. Sağlanan arama sonuçlarını birincil kaynak olarak kullan.
+Sen derin düşünen bir stratejik ve entelektüel partnerisin. Kullanıcı artık veri toplamıyor; anlamlandırmak, derinleşmek, perspektif kazanmak istiyor.
 
-Her yanıtı şu başlıklarla yapılandır (her birinde 3-5 madde):
-## Pazar Büyüklüğü — gerçek rakam, kaynak, yıl. Durağan veya küçülüyorsa söyle.
-## Kilit Oyuncular — bu alanı kim kontrol ediyor? Fonlama seviyeleri?
-## Giriş Engelleri — yeni bir oyuncuyu ne durdurur? Somut ol.
-## Görülmeyen Açılım — çoğu analistin gözden kaçırdığı 1 fırsat veya köşe nokta.
-## Karar — tek cümle: devam et / pivot yap / dur, nedeniyle birlikte.
+YAPMA:
+- Madde madde liste, ## başlıklar, kuru veri dökümü
+- "Araştırmalara göre..." gibi genel laflar
+- Sıradan, tahmin edilebilir başlangıç cümleleri
 
-Her rakamı kaynaklıyarak yaz: **$X.XB** ([Kaynak Adı](URL), Yıl)${COMMON_SUFFIX}`,
+YAP:
+- İlk cümleyle dikkat çek: alışılmışın dışından başla
+- "Çoğu kişi X sanıyor, ama aslında..." — gerçek perspektif getir
+- Tarihsel veya karşılaştırmalı bağlam ver, orijinal bir bağlantı kur
+- Çelişen görüşleri ortaya çıkar ve kendi değerlendirmeni söyle
+- Konuşmanın gidişatına göre bir sonraki düşünce adımını öner
 
-  competitors: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
+Ton: Düşünceli, cesur, meraklı. Format: 3-4 akıcı paragraf. Son paragraf: 1 açıcı soru veya sonraki yön.`,
+};
 
-Sen bir rekabet istihbarat analistsin. Arama sonuçlarını kullan, tahmin yürütme.
+// Research mode tab prompts
+const COMMON_RESEARCH_SUFFIX = `
 
-Yapı:
-## Pazar Hakimiyeti — alan açık mı yoksa büyük oyuncular tarafından kilitli mi?
-## İlk 3-5 Rakip — İsim | Fonlama | Fiyatlandırma | En Büyük Zayıflık (her biri tek satır)
-## Gerçekçi Giriş Boşluğu — varsa hangi spesifik boşluk var?
-## Farklılaşma Açısı — yeni bir oyuncunun sahiplenebileceği somut bir pozisyon.
-## Görülmeyen Tehdit — rakiplerin henüz görmediği ama geliyor olan.
+**FORMAT:**
+## başlıkları kullan. Her başlık: 3-5 madde. Önemli rakamları **kalın** yaz.
+Yanıt: 300-450 kelime. Daha derine gitmek gerekirse son maddeye "📎 Tam analiz için sor." ekle.
 
-Kaynakları belirt. Arama sonuçlarında bulunamayan her şeyi ⚠️ ile işaretle.${COMMON_SUFFIX}`,
+**DÜRÜSTLÜK:**
+- Rakam + kaynak + yıl zorunlu. Belirsiz ifade yok.
+- Kaynak etiketleme: ✅ 2+ kaynak | ⚠️ tek kaynak
 
-  validate: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
+Sona ekle: > **Güven:** ✅ YÜKSEK | ⚠️ ORTA | ❌ DÜŞÜK — [neden]
 
-Sen bir girişim fikri doğrulayıcısısın. Arama sonuçlarını kullan. Varsayılan tutum: şüphecilik. Çalışmayacağı nedenleri çalışacağı nedenlerden önce bul.
+${LANG_RULE}`;
 
-Yapı:
-## Problem Gerçekliği — insanlar bugün bu sorunu çözmek için ödeme yapıyor mu?
-## Pazar Kanıtı — kaynaklı TAM/SAM. Veri yoksa söyle.
-## Ölümcül Kusurlar — regülasyon, büyük rakipler, birim ekonomisi, zamanlama. #1 katili önce söyle.
-## Pazar Sinyalleri — benzer girişimler başarısız olduysa nedeni neydi?
-## Karar — ✅ Devam Et / ⚠️ Pivot Yap (tam olarak ne yapılmalı) / ❌ Dur
+const TAB_PROMPTS = {
+  analyze: `${LANG_RULE}
 
-Yumuşatma yok. Doğrudan ol.${COMMON_SUFFIX}`,
+Sen sert bir pazar araştırma analistsin. Arama sonuçlarını birincil kaynak olarak kullan.
 
-  deep: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
+## Pazar Büyüklüğü — gerçek rakam, kaynak, yıl. Durağansa söyle.
+## Kilit Oyuncular — kim kontrol ediyor? Fonlama?
+## Giriş Engelleri — yeni oyuncuyu ne durdurur? Somut ol.
+## Görülmeyen Açılım — çoğu analistin gözden kaçırdığı 1 fırsat.
+## Karar — tek cümle: devam et / pivot / dur.${COMMON_RESEARCH_SUFFIX}`,
 
-Sen bir sektör araştırma analistsin. Her iddia arama sonuçlarından kaynaklanmalı.
+  competitors: `${LANG_RULE}
 
-Yapı (her başlıkta 3-5 madde):
-## Sektör Büyüklüğü ve Büyümesi — rakam, CAGR, kaynak, yıl
-## Rekabet Dinamikleri — piyasayı kim kontrol ediyor, yoğunlaşma seviyesi
-## Önemli Riskler — regülasyon, teknoloji disrupsiyonu, döngüsellik
-## Büyüme Motorları — piyasayı gerçekte ne ileri itiyor?
-## Gizli Fırsat — bu sektörde çoğu oyuncunun henüz görmediği 1 stratejik açılım.
-## Giriş Önerisi — spesifik, dürüst, eyleme dönüştürülebilir.
+Sen bir rekabet istihbarat analistsin. Arama sonuçlarını kullan.
 
-📎 Tam Porter Beş Kuvvet / SWOT istek üzerine mevcut.${COMMON_SUFFIX}`,
+## Pazar Hakimiyeti — alan açık mı, kilitli mi?
+## İlk 3-5 Rakip — İsim | Fonlama | Fiyat | En Büyük Zayıflık
+## Gerçekçi Giriş Boşluğu — varsa ne?
+## Farklılaşma Açısı — yeni oyuncunun sahiplenebileceği somut pozisyon.
+## Görülmeyen Tehdit — rakiplerin henüz görmediği ama geliyor olan.${COMMON_RESEARCH_SUFFIX}`,
 
-  crosscheck: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
+  validate: `${LANG_RULE}
 
-Sen bir gerçek kontrolcüsünsün. Arama sonuçlarını kullanarak her iddiayı doğrula veya çürüt.
+Sen bir girişim fikri doğrulayıcısısın. Varsayılan tutum: şüphecilik.
 
-Her iddia için:
-**İddia**: [iddia]
-**Karar**: ✅ DOĞRULANDI | ⚠️ KISMEN DOĞRU | ❌ ÇÜRÜTÜLDÜ | ❓ DOĞRULANABİLİR DEĞİL
-**En iyi destekleyen kaynak**: [kaynak + tarih]
-**En iyi çürüten kaynak**: [kaynak + tarih, yoksa "bulunamadı"]
+## Problem Gerçekliği — insanlar bugün bunun için ödeme yapıyor mu?
+## Pazar Kanıtı — TAM/SAM, kaynaklı. Veri yoksa söyle.
+## Ölümcül Kusurlar — #1 katili önce söyle.
+## Pazar Sinyalleri — benzer girişimler neden başarısız oldu?
+## Karar — ✅ Devam / ⚠️ Pivot (tam olarak ne) / ❌ Dur${COMMON_RESEARCH_SUFFIX}`,
 
-Sona genel güvenilirlik puanı ve en önemli düzeltmeyi ekle.${COMMON_SUFFIX}`,
+  deep: `${LANG_RULE}
+
+Sen bir sektör araştırma analistsin. Her iddia kaynaklı.
+
+## Sektör Büyüklüğü ve Büyümesi
+## Rekabet Dinamikleri
+## Önemli Riskler
+## Büyüme Motorları
+## Gizli Fırsat — çoğunun henüz görmediği 1 stratejik açılım.
+## Giriş Önerisi${COMMON_RESEARCH_SUFFIX}`,
+
+  crosscheck: `${LANG_RULE}
+
+Sen bir gerçek kontrolcüsünsün. Her iddiayı arama sonuçlarıyla doğrula veya çürüt.
+
+**İddia** → **Karar**: ✅ DOĞRULANDI | ⚠️ KISMEN | ❌ ÇÜRÜTÜLDÜ | ❓ DOĞRULANABİLİR DEĞİL
+**En iyi destekleyen kaynak** | **En iyi çürüten kaynak**
+
+Sona: genel güvenilirlik puanı + en önemli düzeltme.${COMMON_RESEARCH_SUFFIX}`,
 };
 
 export default async function handler(req) {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS });
-  }
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
   let body;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response("Invalid request body", { status: 400 });
-  }
+  try { body = await req.json(); } catch { return new Response("Invalid request body", { status: 400 }); }
 
   const { message, tab = "analyze", history = [] } = body;
-
-  if (!message?.trim()) {
-    return new Response("Message cannot be empty", { status: 400 });
-  }
+  if (!message?.trim()) return new Response("Message cannot be empty", { status: 400 });
 
   const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) {
-    return new Response("Groq API key not configured", { status: 500 });
-  }
+  if (!groqKey) return new Response("Groq API key not configured", { status: 500 });
 
   const tavilyKey = process.env.TAVILY_API_KEY;
+
+  // Determine response mode
+  const mode = classifyMode(message, history);
   const depth = classifyDepth(message);
-  const systemPrompt = SYSTEM_PROMPTS[tab] || SYSTEM_PROMPTS.analyze;
+
+  // Select system prompt: mode overrides tab for non-research queries
+  const systemPrompt = (mode !== 'research' && MODE_PROMPTS[mode])
+    ? MODE_PROMPTS[mode]
+    : (TAB_PROMPTS[tab] || TAB_PROMPTS.analyze);
 
   const encoder = new TextEncoder();
   const { readable, writable } = new TransformStream();
@@ -250,41 +291,50 @@ export default async function handler(req) {
       let searchCount = 0;
 
       if (tavilyKey) {
-        await writer.write(encoder.encode(`<!--STATUS:🔍 Web'de aranıyor...-->`));
-
-        if (depth === 'simple') {
-          // Single fast search, fewer results
-          allResults = await search(message.trim(), tavilyKey, 'simple', 6);
+        if (mode === 'brainstorm') {
+          // Brainstorm: no search needed — pure creativity
+          // (optionally a light inspirational search could go here)
+        } else if (mode === 'discuss') {
+          // Discuss: single light search for context/grounding
+          await writer.write(encoder.encode(`<!--STATUS:🔍 Bağlam aranıyor...-->`));
+          allResults = await search(message.trim(), tavilyKey, 'basic', 5);
           searchCount = 1;
         } else {
-          // Two parallel searches: main + angle
-          await writer.write(encoder.encode(`<!--STATUS:🔭 Çoklu kaynak taranıyor...-->`));
-          const angleQuery = buildAngleQuery(message.trim(), tab);
-          const [primary, secondary] = await Promise.all([
-            search(message.trim(), tavilyKey, depth, depth === 'deep' ? 10 : 8),
-            search(angleQuery, tavilyKey, 'basic', 6),
-          ]);
-          allResults = dedupeResults([...primary, ...secondary]);
-          searchCount = 2;
+          // Research: full double search
+          if (depth === 'simple') {
+            await writer.write(encoder.encode(`<!--STATUS:🔍 Web'de aranıyor...-->`));
+            allResults = await search(message.trim(), tavilyKey, 'basic', 6);
+            searchCount = 1;
+          } else {
+            await writer.write(encoder.encode(`<!--STATUS:🔭 Çoklu kaynak taranıyor...-->`));
+            const [primary, secondary] = await Promise.all([
+              search(message.trim(), tavilyKey, depth, depth === 'deep' ? 10 : 8),
+              search(buildAngleQuery(message.trim(), tab), tavilyKey, 'basic', 6),
+            ]);
+            allResults = dedupeAndSort([...primary, ...secondary]);
+            searchCount = 2;
+          }
         }
-
-        // Sort: trusted first, low quality last; then filter out low
-        allResults = sortByQuality(allResults).filter(r => classifySource(r.url) !== 'low');
+        allResults = dedupeAndSort(allResults);
       }
 
-      await writer.write(encoder.encode(`<!--STATUS:🤖 Analiz yapılıyor...-->`));
+      const statusLabel = mode === 'brainstorm'
+        ? '💡 Fikirler üretiliyor...'
+        : mode === 'discuss'
+          ? '🧠 Derinlemesine düşünülüyor...'
+          : '🤖 Analiz yapılıyor...';
+      await writer.write(encoder.encode(`<!--STATUS:${statusLabel}-->`));
 
-      const searchContext = tavilyKey && allResults.length
-        ? `Arama sonuçları ("${message.trim()}" için):\n\n${formatResultsForAI(allResults)}\n\n---\n\n`
+      const searchContext = allResults.length
+        ? `Arama sonuçları:\n\n${formatResultsForAI(allResults)}\n\n---\n\n`
         : '';
 
-      // Append language reminder to user message too
       const userContent = searchContext + message.trim()
-        + '\n\n[Yanıtını tamamen Türkçe yaz. Başka dil kullanma.]';
+        + '\n\n[Yanıtını tamamen Türkçe yaz.]';
 
       const trimmedHistory = history.slice(-10).map(m => ({
         role: m.role,
-        content: m.content,
+        content: m.content.slice(0, 800), // trim long history entries
       }));
 
       const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -301,8 +351,8 @@ export default async function handler(req) {
             { role: 'user', content: userContent },
           ],
           stream: true,
-          max_tokens: 2800,
-          temperature: 0.45,
+          max_tokens: mode === 'research' ? 2800 : 1800,
+          temperature: mode === 'brainstorm' ? 0.75 : mode === 'discuss' ? 0.6 : 0.45,
         }),
       });
 
@@ -319,11 +369,7 @@ export default async function handler(req) {
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) {
-          buffer += decoder.decode();
-          break;
-        }
-
+        if (done) { buffer += decoder.decode(); break; }
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
@@ -332,15 +378,10 @@ export default async function handler(req) {
           if (!line.startsWith("data: ")) continue;
           const rawLine = line.slice(6).trim();
           if (!rawLine || rawLine === "[DONE]") continue;
-
           let evt;
           try { evt = JSON.parse(rawLine); } catch { continue; }
-
           const text = evt.choices?.[0]?.delta?.content;
-          if (text) {
-            textAccumulator += text;
-            await writer.write(encoder.encode(text));
-          }
+          if (text) { textAccumulator += text; await writer.write(encoder.encode(text)); }
         }
       }
 
@@ -349,7 +390,6 @@ export default async function handler(req) {
         title: r.title || r.url,
         quality: classifySource(r.url),
       }));
-
       const verifiedCount = allSources.filter(s => s.quality === 'trusted').length;
       const conflictingCount = (textAccumulator.match(/⚠️/g) || []).length;
 
@@ -361,6 +401,7 @@ export default async function handler(req) {
           conflicting: conflictingCount,
           searchCount,
           depth,
+          mode,
         },
       });
       await writer.write(encoder.encode(`<!--DATA:${payload}-->`));
