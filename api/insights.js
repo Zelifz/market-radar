@@ -4,6 +4,17 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+const PRIMARY_MODEL  = 'llama-3.3-70b-versatile';
+const FALLBACK_MODEL = 'llama-3.1-8b-instant';
+
+async function callGroq(model, groqKey, body) {
+  return fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+    body: JSON.stringify({ model, ...body }),
+  });
+}
+
 const SYSTEM = `You are a strategic advisor analyzing research notes and conversation history.
 
 Return ONLY valid JSON, no markdown, no explanation:
@@ -50,23 +61,18 @@ export default async function handler(req) {
     .join("\n");
   const histText = histSummary ? `\n\nConversation context:\n${histSummary}` : "";
 
+  const reqBody = {
+    messages: [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: `${cardsText}${histText}` },
+    ],
+    max_tokens: 600,
+    temperature: 0.4,
+  };
+
   try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${groqKey}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: `${cardsText}${histText}` },
-        ],
-        max_tokens: 600,
-        temperature: 0.4,
-      }),
-    });
+    let res = await callGroq(PRIMARY_MODEL, groqKey, reqBody);
+    if (!res.ok && res.status === 429) res = await callGroq(FALLBACK_MODEL, groqKey, reqBody);
     if (!res.ok) throw new Error("Groq error");
     const data = await res.json();
     const text = (data.choices?.[0]?.message?.content || "").trim();

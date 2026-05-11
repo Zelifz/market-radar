@@ -4,6 +4,9 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+const PRIMARY_MODEL  = 'llama-3.3-70b-versatile';
+const FALLBACK_MODEL = 'llama-3.1-8b-instant';
+
 const SYSTEM_PROMPT = `Sen pazar araştırması yapay zeka yanıtlarından sonra 3 takip butonu üreten bir asistansın.
 
 Her buton farklı bir MOD tetiklemeli. Buton sorgusunun kelimeleri modu belirliyor — bu kurallara kesinlikle uy:
@@ -34,63 +37,55 @@ SADECE geçerli JSON döndür:
 
 0 buton: {"buttons":[]}`;
 
+async function callGroq(model, groqKey, body) {
+  return fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+    body: JSON.stringify({ model, ...body }),
+  });
+}
+
 export default async function handler(req) {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS });
-  }
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
   let body;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ buttons: [] }), {
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
+  try { body = await req.json(); } catch {
+    return new Response(JSON.stringify({ buttons: [] }), { headers: { ...CORS, "Content-Type": "application/json" } });
   }
 
   const { responseText = "", tab = "analyze", userQuery = "" } = body;
 
   if (!responseText.trim()) {
-    return new Response(JSON.stringify({ buttons: [] }), {
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ buttons: [] }), { headers: { ...CORS, "Content-Type": "application/json" } });
   }
 
   const groqKey = process.env.GROQ_API_KEY;
   if (!groqKey) {
-    return new Response(JSON.stringify({ buttons: [] }), {
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ buttons: [] }), { headers: { ...CORS, "Content-Type": "application/json" } });
   }
 
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`,
+  const reqBody = {
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: `Tab: ${tab}\nKullanıcı sordu: "${userQuery.slice(0, 200)}"\n\nYanıt (ilk 1200 karakter):\n${responseText.slice(0, 1200)}`,
       },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: `Tab: ${tab}\nUser asked: "${userQuery.slice(0, 200)}"\n\nAI response (first 1500 chars):\n${responseText.slice(0, 1500)}`,
-          },
-        ],
-        max_tokens: 256,
-        temperature: 0.3,
-      }),
-    });
+    ],
+    max_tokens: 300,
+    temperature: 0.3,
+  };
+
+  try {
+    let res = await callGroq(PRIMARY_MODEL, groqKey, reqBody);
+
+    if (!res.ok && res.status === 429) {
+      res = await callGroq(FALLBACK_MODEL, groqKey, reqBody);
+    }
 
     if (!res.ok) {
-      return new Response(JSON.stringify({ buttons: [] }), {
-        headers: { ...CORS, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ buttons: [] }), { headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     const data = await res.json();
@@ -108,14 +103,10 @@ export default async function handler(req) {
       parsed.buttons = [];
     }
 
-    return new Response(JSON.stringify(parsed), {
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify(parsed), { headers: { ...CORS, "Content-Type": "application/json" } });
 
   } catch {
-    return new Response(JSON.stringify({ buttons: [] }), {
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ buttons: [] }), { headers: { ...CORS, "Content-Type": "application/json" } });
   }
 }
 

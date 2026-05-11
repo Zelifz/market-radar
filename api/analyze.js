@@ -4,6 +4,9 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+const PRIMARY_MODEL  = 'llama-3.3-70b-versatile';
+const FALLBACK_MODEL = 'llama-3.1-8b-instant'; // 500K TPD free tier
+
 const TRUSTED_DOMAINS = new Set([
   'reuters.com','bloomberg.com','wsj.com','ft.com','economist.com',
   'apnews.com','bbc.com','bbc.co.uk','nytimes.com','theguardian.com',
@@ -343,29 +346,33 @@ export default async function handler(req) {
         content: m.content.slice(0, 800), // trim long history entries
       }));
 
-      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const maxTokens    = mode === 'research' ? 2000 : mode === 'discuss' ? 1400 : 1000;
+      const temperature  = mode === 'brainstorm' ? 0.75 : mode === 'discuss' ? 0.6 : 0.45;
+      const messages     = [
+        { role: 'system', content: systemPrompt },
+        ...trimmedHistory,
+        { role: 'user', content: userContent },
+      ];
+
+      const makeGroqReq = (model) => fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${groqKey}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...trimmedHistory,
-            { role: 'user', content: userContent },
-          ],
-          stream: true,
-          max_tokens: mode === 'research' ? 2800 : 1800,
-          temperature: mode === 'brainstorm' ? 0.75 : mode === 'discuss' ? 0.6 : 0.45,
-        }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+        body: JSON.stringify({ model, messages, stream: true, max_tokens: maxTokens, temperature }),
       });
+
+      let groqRes = await makeGroqReq(PRIMARY_MODEL);
 
       if (!groqRes.ok) {
         const errText = await groqRes.text();
-        await writer.write(encoder.encode(`\n\n**API hatası:** ${errText}`));
-        return;
+        if (groqRes.status === 429) {
+          // Rate limit hit — fall back to smaller model transparently
+          await writer.write(encoder.encode(`<!--STATUS:🔄 Yedek modele geçiliyor...-->`));
+          groqRes = await makeGroqReq(FALLBACK_MODEL);
+        }
+        if (!groqRes.ok) {
+          await writer.write(encoder.encode(`\n\n**API hatası:** ${errText}`));
+          return;
+        }
       }
 
       const reader = groqRes.body.getReader();
