@@ -4,6 +4,26 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+async function search(query, apiKey) {
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query,
+        search_depth: 'basic',
+        max_results: 5,
+        include_answer: false,
+        include_raw_content: false,
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.results || [];
+  } catch { return []; }
+}
+
 export default async function handler(req) {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
@@ -20,14 +40,47 @@ export default async function handler(req) {
 
   const groqKey = process.env.GROQ_API_KEY;
   if (!groqKey) {
-    return new Response(JSON.stringify({ insight: "API key not configured." }), {
+    return new Response(JSON.stringify({ insight: "" }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
 
+  const tavilyKey = process.env.TAVILY_API_KEY;
+
+  // Build search query from card content to ground the insight in real data
+  const cardsSummary = cards.map(c => c.text).join(' ').slice(0, 300);
+  const searchQuery = `${cardsSummary} nasıl yapılır strateji 2024 2025`;
+
+  let searchContext = '';
+  if (tavilyKey) {
+    const results = await search(searchQuery, tavilyKey);
+    if (results.length > 0) {
+      searchContext = '\n\nWeb araştırma verisi (önerilerini buna dayandır):\n'
+        + results.map((r, i) => `[${i + 1}] ${r.title}\n${r.content?.slice(0, 300) || ''}`).join('\n\n');
+    }
+  }
+
   const cardsText = cards
-    .map((c, i) => `[${i + 1}] [${c.tag}] ${c.text}${c.note ? ` — Note: ${c.note}` : ""}`)
-    .join("\n");
+    .map((c, i) => `[${i + 1}] [${c.tag}] ${c.text}${c.note ? ` — Not: ${c.note}` : ''}`)
+    .join('\n');
+
+  const prompt = `Board kartları:
+${cardsText}
+${searchContext}
+
+GÖREV: Yukarıdaki board kartlarına ve arama verilerine dayanarak TAM OLARAK 3 madde yaz.
+
+KURALLAR — KESİN:
+1. Sadece kartlarda veya arama verisinde GERÇEKten var olan bilgilere dayan. Şirket adı, kişi adı, rakam UYDURMA.
+2. Her madde: ne yapılacak + neden (karttan kanıt) + nasıl (somut ilk adım).
+3. Bir şey öneriyorsan tam olarak nasıl yapılacağını söyle. "X ile görüş" değil, "X'in web sitesindeki Y formu doldur" gibi.
+4. Her madde max 15 kelime. Türkçe.
+5. Hiçbir giriş cümlesi, başlık, açıklama ekleme.
+
+FORMAT — sadece bu:
+• [madde 1]
+• [madde 2]
+• [madde 3]`;
 
   try {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -41,16 +94,12 @@ export default async function handler(req) {
         messages: [
           {
             role: "system",
-            content:
-              "Sen stratejik bir danışmansın. Board kartlarını analiz et ve SADECE 3 madde döndür — fazlası değil. Her madde max 10 kelime, eyleme dönüştürülebilir, Türkçe. Format tam olarak şöyle olsun:\n• [madde 1]\n• [madde 2]\n• [madde 3]\nHiçbir giriş cümlesi, açıklama veya başlık ekleme. Sadece 3 madde.",
+            content: "Sen gerçekçi ve dürüst bir stratejik danışmansın. Asla kart içeriğinde olmayan şirket, kişi veya rakam uydurmazsın. Önerilerini web araştırma verisine dayandırırsın. Yanıtın sadece 3 madde içerir, başka hiçbir şey.",
           },
-          {
-            role: "user",
-            content: `Board cards:\n${cardsText}`,
-          },
+          { role: "user", content: prompt },
         ],
-        max_tokens: 120,
-        temperature: 0.4,
+        max_tokens: 180,
+        temperature: 0.3,
       }),
     });
     if (!res.ok) throw new Error("Groq error");
