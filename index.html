@@ -1027,6 +1027,56 @@
     .save-sel-btn:hover { opacity: 0.88; transform: translateY(-1px); }
     .save-sel-btn.hidden { display: none; }
 
+    /* ── Market Dynamics ── */
+    .market-dynamics {
+      border-bottom: 1px solid var(--border);
+      padding: 9px 12px 10px;
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .market-dynamics-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .market-dynamics-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--accent2);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .market-dynamics-sub {
+      font-size: 0.62rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    .market-stat {
+      font-size: 0.76rem;
+      color: #a0a0c0;
+      padding: 3px 0 3px 8px;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      line-height: 1.4;
+      display: block;
+    }
+    .market-stat:hover {
+      color: var(--accent2);
+      border-left-color: var(--accent2);
+    }
+
+    .market-stats-placeholder {
+      font-size: 0.74rem;
+      color: #44446a;
+      font-style: italic;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 768px) {
       .right-panel { display: none; }
@@ -1097,6 +1147,17 @@
       <button class="ptab active" data-panel="board">MY BOARD</button>
       <button class="ptab" data-panel="insights">INSIGHTS</button>
       <button class="ptab" data-panel="roadmap">ROADMAP</button>
+    </div>
+
+    <!-- Market Dynamics: Quick Recap (persistent, always visible) -->
+    <div class="market-dynamics" id="market-dynamics-section">
+      <div class="market-dynamics-header">
+        <span class="market-dynamics-title">📊 Market Dynamics</span>
+        <span class="market-dynamics-sub">Quick Recap</span>
+      </div>
+      <div id="market-stats-list">
+        <div class="market-stats-placeholder">Araştırdıkça burayı güncelleyeceğim...</div>
+      </div>
     </div>
 
     <!-- MY BOARD -->
@@ -1289,6 +1350,8 @@ clearBtn.addEventListener('click', () => {
   convoEl.innerHTML = '';
   insightsData = null;
   roadmapData = null;
+  marketStats = [];
+  renderMarketDynamics();
   renderWelcome();
 });
 
@@ -1478,6 +1541,11 @@ function appendAiMessage(text, sources, meta, errorMsg, fromCache, userQuery) {
       wrap.appendChild(btnsContainer);
       fetchSuggestions(text, activeTab, userQuery || '', btnsContainer);
     }
+
+    // Update market dynamics panel from research responses
+    if (meta?.mode === 'research' || (sources && sources.length > 0)) {
+      if (extractMarketStats(text)) renderMarketDynamics();
+    }
   }
 
   convoEl.appendChild(wrap);
@@ -1533,7 +1601,8 @@ function buildSourceExplanation(scanned, verified, conflicting, searchCount) {
 }
 
 function buildSourcesUI(sources, meta, fromCache) {
-  if (!meta) return null;
+  // Only show source section when there are actual cited sources
+  if (!sources || sources.length === 0) return null;
 
   const scanned = meta?.scanned ?? sources.length;
   const verified = meta?.verified ?? 0;
@@ -1628,6 +1697,69 @@ function escHtml(s) {
 }
 
 renderWelcome();
+
+// ════════════════════════════════════════════════════════════════
+// MARKET DYNAMICS
+// ════════════════════════════════════════════════════════════════
+
+let marketStats = [];
+
+function extractMarketStats(rawText) {
+  const text = rawText
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+  const lines = text.split('\n')
+    .map(l => l.replace(/^[-•*►▸✓✅⚠️❌📊🔹🔸➤>\s]+/, '').trim())
+    .filter(l => l.length > 20 && l.length < 160);
+
+  const isMarketData = line =>
+    /\d[\d,.]*\s*(milyar|milyon|trilyon|billion|million|trillion)/i.test(line) ||
+    /[$€₺]\s*\d[\d,.]*/.test(line) ||
+    /\d[\d,.]*\s*%\s*(büyüme|artış|growth|CAGR|yıllık|annual)/i.test(line) ||
+    /CAGR.*\d/i.test(line) ||
+    /(pazar|market)\s*(büyüklüğü|size|hacmi).{0,60}\d/i.test(line);
+
+  const seenTexts = new Set(marketStats.map(s => s.text));
+  const newStats = [];
+
+  for (const line of lines) {
+    if (isMarketData(line) && !seenTexts.has(line) && newStats.length < 3) {
+      newStats.push({ text: line.slice(0, 110), query: line });
+      seenTexts.add(line);
+    }
+  }
+
+  if (newStats.length > 0) {
+    marketStats = [...newStats, ...marketStats].slice(0, 5);
+    return true;
+  }
+  return false;
+}
+
+function renderMarketDynamics() {
+  const list = document.getElementById('market-stats-list');
+  if (!list) return;
+  if (marketStats.length === 0) {
+    list.innerHTML = '<div class="market-stats-placeholder">Araştırdıkça burayı güncelleyeceğim...</div>';
+    return;
+  }
+  list.innerHTML = marketStats.map((s, i) =>
+    `<div class="market-stat" data-idx="${i}">→ ${escHtml(s.text)}</div>`
+  ).join('');
+  list.querySelectorAll('.market-stat').forEach(el => {
+    el.addEventListener('click', () => {
+      if (busy) return;
+      const idx = parseInt(el.dataset.idx, 10);
+      msgEl.value = marketStats[idx].query + ' — daha fazla analiz ver';
+      msgEl.focus();
+      analyze();
+    });
+  });
+}
 
 // ════════════════════════════════════════════════════════════════
 // RIGHT PANEL

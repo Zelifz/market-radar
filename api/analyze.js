@@ -325,12 +325,15 @@ export default async function handler(req) {
       let searchCount = 0;
 
       if (tavilyKey) {
-        if (mode === 'chat' || mode === 'brainstorm') {
-          // No search — pure AI response
-          // Discuss: single light search for context/grounding
+        if (mode === 'chat') {
+          // No search — pure conversational response
+          searchCount = 0;
+        } else if (mode === 'brainstorm' || mode === 'discuss') {
+          // Light context search for grounding (saves tokens vs full double-search)
           await writer.write(encoder.encode(`<!--STATUS:🔍 Bağlam aranıyor...-->`));
           allResults = await search(message.trim(), tavilyKey, 'basic', 5);
           searchCount = 1;
+          allResults = dedupeAndSort(allResults);
         } else {
           // Research: full double search
           if (depth === 'simple') {
@@ -346,8 +349,8 @@ export default async function handler(req) {
             allResults = dedupeAndSort([...primary, ...secondary]);
             searchCount = 2;
           }
+          allResults = dedupeAndSort(allResults);
         }
-        allResults = dedupeAndSort(allResults);
       }
 
       const statusLabel = mode === 'chat'
@@ -388,14 +391,29 @@ export default async function handler(req) {
       let groqRes = await makeGroqReq(PRIMARY_MODEL);
 
       if (!groqRes.ok) {
-        const errText = await groqRes.text();
+        const primaryErr = await groqRes.text();
         if (groqRes.status === 429) {
-          // Rate limit hit — fall back to smaller model transparently
           await writer.write(encoder.encode(`<!--STATUS:🔄 Yedek modele geçiliyor...-->`));
           groqRes = await makeGroqReq(FALLBACK_MODEL);
-        }
-        if (!groqRes.ok) {
-          await writer.write(encoder.encode(`\n\n**API hatası:** ${errText}`));
+          if (!groqRes.ok) {
+            const fbErr = await groqRes.text();
+            let userMsg = 'Günlük istek limiti doldu. Bir süre sonra tekrar deneyin.';
+            try {
+              const parsed = JSON.parse(fbErr || primaryErr);
+              const retryMatch = (parsed?.error?.message || '').match(/try again in ([\w.]+)/i);
+              if (retryMatch) {
+                const s = retryMatch[1];
+                const h = (s.match(/(\d+)h/) || [])[1];
+                const m = (s.match(/(\d+)m/) || [])[1];
+                const wait = [h && `${h} saat`, m && `${m} dakika`].filter(Boolean).join(' ');
+                if (wait) userMsg = `Günlük limit doldu. ~${wait} sonra tekrar deneyin.`;
+              }
+            } catch { /* keep default */ }
+            await writer.write(encoder.encode(`\n\n⏳ ${userMsg}`));
+            return;
+          }
+        } else {
+          await writer.write(encoder.encode(`\n\n**Hata:** ${primaryErr.slice(0, 200)}`));
           return;
         }
       }

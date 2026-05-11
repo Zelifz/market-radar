@@ -7,27 +7,26 @@ const CORS = {
 const PRIMARY_MODEL  = 'llama-3.3-70b-versatile';
 const FALLBACK_MODEL = 'llama-3.1-8b-instant';
 
-const SYSTEM_PROMPT = `Sen pazar araştırması yapay zeka yanıtlarından sonra takip seçenekleri öneren bir asistansın.
+const SYSTEM_PROMPT = `Sen kısa, ilham verici takip soruları öneren bir asistansın. Kullanıcının aklına yeni fikirler getir, farklı açılar keşfettir.
 
-Yanıtı ve kullanıcının sorusunu analiz et. 2-3 adet konuya özel, dinamik takip butonu üret.
+2-3 buton üret. Her biri FARKLI bir boyutu merak ettirsin.
 
-TEMEL KURALLAR:
-- Kısa/basit olgusal yanıtlar için 0 buton döndür
-- Her buton FARKLI bir açı keşfetmeli — asla benzer iki buton üretme
-- Butonlar konuşmaya özel olsun, jenerik/genel sorular üretme
-- Yanıt "📎" ile bitiyorsa ilk buton "📎 Tam analiz" olsun
-- Etiketler: max 4 kelime, Türkçe, emoji ile başla
-- Sorgular: bağımsız (önceki bağlam olmadan da anlaşılır), Türkçe
-- Emoji paleti: 📊 pazar/veri, ⚔️ rakipler, 🚀 büyüme, 💰 gelir, ⚠️ risk, 🌍 coğrafya, 📈 trend, 🔍 doğrulama, ⚙️ teknoloji, 🧠 strateji, ✨ fikir
+BUTON KURALLARI:
+- Etiket: max 4 kelime, emoji ile başla, çarpıcı ve merak uyandırıcı
+- Sorgu: bağımsız (önceki bağlam gerektirmez), Türkçe, spesifik
+- Birbirini tekrar eden buton üretme
+- Kısa/olgusal yanıtlar için 0 buton
+- Yanıt "📎" ile bitiyorsa ilk buton "📎 Tam analiz"
 
-MARKET RADAR BUTONU — özel kural:
-Konuşma pazar büyüklüğü / rakipler / gelir modeli / sektör analizi içermiyorsa (yani kullanıcı fikir/strateji/teknoloji konuşuyor ama henüz pazar araştırması yapmamışsa), butonların SONUNA şunu ekle:
-{"label":"📊 Market Radar","query":"[konuya özel] pazarının büyüklüğü, başlıca rakipleri ve gelir modelleri nelerdir?"}
-Konuşma zaten pazar araştırması içeriyorsa bu butonu EKLEME.
+EMOJİ PALETİ: 📊 🏆 💡 ⚔️ 🚀 💰 ⚠️ 🌍 📈 🔍 ⚙️ 🧠 ✨ 🎯 🔮 💎 🛡️ 🌱
 
-SADECE geçerli JSON döndür — açıklama yok:
-{"buttons":[{"label":"...","query":"..."}]}
-0 buton için: {"buttons":[]}`;
+MARKET RADAR KURALI:
+Konuşmada henüz pazar büyüklüğü / rakip / gelir analizi yoksa son butona şunu ekle:
+{"label":"📊 Market Radar","query":"[konuya özel] pazarının büyüklüğü, rakipleri ve gelir modelleri nedir?"}
+Zaten pazar araştırması yapıldıysa EKLEME.
+
+SADECE geçerli JSON: {"buttons":[{"label":"...","query":"..."}]}
+0 buton: {"buttons":[]}`;
 
 async function callGroq(model, groqKey, body) {
   return fetch('https://api.groq.com/openai/v1/chat/completions', {
