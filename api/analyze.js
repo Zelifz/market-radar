@@ -75,8 +75,15 @@ function classifyMode(message, history = []) {
     'what if', 'how might i', 'give me ideas', 'brainstorm',
   ];
 
-  // Discuss: opinion, future, meaning, perspective, feasibility/strategy questions
+  // Discuss: explanation, opinion, future, meaning, perspective, feasibility
   const discussSignals = [
+    // "Tell me / explain" — most important catch
+    'anlat', 'anlatır mısın', 'anlatabilir misin', 'anlayabilir miyim',
+    'açıkla', 'açıklar mısın', 'açıklayabilir misin',
+    'nasıl yapabilirim', 'nasıl yapılır', 'nasıl çalışır', 'nasıl olur',
+    'nasıl öğrenirim', 'nereden öğrenirim', 'öğretir misin',
+    'kendim nasıl', 'ben nasıl', 'biz nasıl',
+    'ne yapmalıyım', 'ne yapmalı', 'ne önerirsin',
     // Opinion / perspective
     'sence', 'ne dersin', 'düşüncen ne', 'fikrin ne', 'görüşün ne', 'yorumun ne',
     // Future / evolution
@@ -84,15 +91,16 @@ function classifyMode(message, history = []) {
     // Why / meaning
     'neden böyle', 'neden oluyor', 'mantığı ne', 'önemi ne', 'anlamı ne',
     'felsefesi ne', 'tarihsel', 'toplumsal etkisi',
-    // Feasibility / strategic need — "can I do this / what do I need"
+    // Feasibility / strategic need
     'neye ihtiyacım', 'ne gerekiyor', 'ne lazım', 'ne kadar zor',
     'yapabilir miyim', 'geliştirebilir miyim', 'başarabilir miyim', 'girebilir miyim',
     'mümkün mü', 'gerçekçi mi', 'mantıklı mı',
     'nasıl girer', 'nasıl başlarım', 'nereden başlamalı', 'nasıl konumlan',
-    'stratejim ne', 'yol haritam ne', 'benim için ne', 'bizim için ne',
+    'stratejim ne', 'yol haritam ne',
     // English equivalents
-    'what do you think', 'your opinion', 'your view', 'why is this', 'how will this evolve',
-    'what do i need', 'can i', 'is it possible', 'how do i start', 'is it realistic',
+    'explain', 'how do i', 'how can i', 'teach me', 'walk me through',
+    'what do you think', 'your opinion', 'your view', 'why is this',
+    'what do i need', 'can i', 'is it possible', 'how do i start',
   ];
 
   if (brainstormSignals.some(k => lower.includes(k))) return 'brainstorm';
