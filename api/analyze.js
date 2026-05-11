@@ -45,34 +45,29 @@ function classifySource(url) {
 
 function classifyMode(message, history = []) {
   const lower = message.toLowerCase();
-  const len = message.trim().length;
 
+  // Brainstorm: explicit creative/ideation intent
   const brainstormSignals = [
-    'fikir', 'beyin fırtınası', 'brainstorm', 'hayal', 'öneri ver', 'seçenek',
-    'alternatif', 'ne yapabilirim', 'nasıl yaklaşayım', 'hangi yol', 'olasılık',
-    'what if', 'how might', 'imagine', 'suggest', 'options', 'ideas for',
-    'yenilik', 'inovasyon', 'farklı bir açı', 'daha iyi bir yol',
+    'beyin fırtınası', 'brainstorm',
+    'fikir üret', 'fikir ver', 'fikirler neler',
+    'öneri ver', 'önerir misin', 'öneriler neler',
+    'seçenek ver', 'seçenekler neler', 'alternatif öner',
+    'ne yapabilirim', 'nasıl yapabilirim', 'nasıl yaklaşayım',
+    'hayal et', 'düşün bakalım', 'farklı bir açı',
+    'what if', 'how might i', 'give me ideas', 'brainstorm',
   ];
 
+  // Discuss: opinion, future, meaning, perspective
   const discussSignals = [
-    'nasıl gelişecek', 'geleceği', 'gelecekte', 'evrimi', 'yönü nereye',
-    'sence', 'ne dersin', 'düşüncen', 'görüşün', 'fikrin ne',
-    'neden böyle', 'niye', 'mantığı ne', 'önemi ne', 'anlamı ne',
-    'toplumsal', 'etki', 'dönüşüm', 'değişim nasıl', 'tarihsel',
-    'why is', 'how will', 'what do you think', 'your view', 'in your opinion',
-    'what makes', 'why does', 'how does this', 'peki ya', 'ya da',
+    'sence', 'ne dersin', 'düşüncen ne', 'fikrin ne', 'görüşün ne', 'yorumun ne',
+    'nasıl gelişecek', 'nasıl değişecek', 'geleceği ne olacak', 'nereye gidecek',
+    'neden böyle', 'neden oluyor', 'mantığı ne', 'önemi ne', 'anlamı ne',
+    'felsefesi ne', 'tarihsel', 'toplumsal etkisi',
+    'what do you think', 'your opinion', 'your view', 'why is this', 'how will this evolve',
   ];
 
-  const hasBrainstorm = brainstormSignals.some(k => lower.includes(k));
-  const hasDiscuss = discussSignals.some(k => lower.includes(k));
-
-  if (hasBrainstorm) return 'brainstorm';
-  if (hasDiscuss) return 'discuss';
-
-  // Short follow-up mid-conversation = user wants to think, not research again
-  if (history.length >= 4 && len < 80 && !lower.includes('pazar') && !lower.includes('market') && !lower.includes('rakip')) {
-    return 'discuss';
-  }
+  if (brainstormSignals.some(k => lower.includes(k))) return 'brainstorm';
+  if (discussSignals.some(k => lower.includes(k))) return 'discuss';
 
   return 'research';
 }
