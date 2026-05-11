@@ -26,7 +26,10 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
       line-height: 1.6;
     }
 
@@ -34,17 +37,18 @@
     header {
       background: linear-gradient(160deg, #0e0820 0%, #080f20 60%, #080808 100%);
       border-bottom: 1px solid var(--border);
-      padding: 20px 24px;
+      padding: 16px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
+      flex-shrink: 0;
     }
 
     .header-left { display: flex; align-items: center; gap: 14px; }
 
     .logo {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: 800;
       background: linear-gradient(135deg, var(--accent) 30%, var(--accent2));
       -webkit-background-clip: text;
@@ -55,7 +59,7 @@
     }
 
     .logo-sub {
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: var(--muted);
       letter-spacing: 0.02em;
     }
@@ -76,11 +80,26 @@
     }
     .ghost-btn:hover { border-color: var(--accent); color: var(--text); }
 
+    /* ── App body ── */
+    .app-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .main-col {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
     /* ── Layout ── */
     .layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      max-width: 760px;
       margin: 0 auto;
       padding: 28px 20px 80px;
       gap: 0;
@@ -133,7 +152,7 @@
       padding: 20px 24px;
     }
 
-    /* ── Sources (inline pills) ── */
+    /* ── Sources ── */
     .sources-row {
       display: flex;
       align-items: center;
@@ -183,7 +202,7 @@
     }
     .src-chip-more:hover { color: var(--text); border-color: var(--muted); }
 
-    /* ── Source Analysis section ── */
+    /* ── Source Analysis ── */
     .source-analysis {
       border-top: 1px solid var(--border);
       margin-top: 10px;
@@ -315,7 +334,7 @@
     .follow-btn:nth-child(3n+3) { border-color: rgba(240,184,109,0.35); color: #e8b86a; }
     .follow-btn:nth-child(3n+3):hover { border-color: var(--warn); color: #f0cc8a; background: rgba(240,184,109,0.08); }
 
-    /* ── Trust score badge ── */
+    /* ── Trust badge ── */
     .trust-badge {
       font-size: 0.7rem;
       padding: 2px 8px;
@@ -348,7 +367,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Inline streaming card (active response) ── */
+    /* ── Streaming card ── */
     #streaming-card {
       display: none;
       background: var(--surface);
@@ -412,7 +431,7 @@
       margin-bottom: 10px;
     }
 
-    /* ── Welcome state ── */
+    /* ── Welcome ── */
     .welcome {
       text-align: center;
       padding: 48px 20px;
@@ -448,13 +467,563 @@
       font-size: 0.88rem;
     }
 
+    /* ════════════════════════════════════════════
+       RIGHT PANEL
+    ════════════════════════════════════════════ */
+
+    .right-panel {
+      width: 300px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .ptab {
+      flex: 1;
+      padding: 10px 4px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-family: inherit;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .ptab:hover { color: var(--text); }
+    .ptab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 12px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .panel-content.hidden { display: none; }
+
+    /* ── Board entry ── */
+    .board-entry {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .board-entry textarea {
+      min-height: 60px;
+      font-size: 0.83rem;
+      padding: 9px 11px;
+      resize: none;
+    }
+
+    .tag-row {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .tag-btn {
+      padding: 3px 9px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.7rem;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .tag-btn:hover { border-color: var(--accent); color: var(--text); }
+    .tag-btn.active[data-tag="opportunity"] { border-color: var(--green); color: var(--green); background: rgba(78,203,122,0.08); }
+    .tag-btn.active[data-tag="risk"]        { border-color: var(--error); color: var(--error); background: rgba(240,109,124,0.08); }
+    .tag-btn.active[data-tag="key-insight"] { border-color: var(--accent); color: var(--accent); background: rgba(124,109,240,0.1); }
+    .tag-btn.active[data-tag="question"]    { border-color: var(--accent2); color: var(--accent2); background: rgba(62,207,184,0.08); }
+    .tag-btn.active[data-tag="my-note"]     { border-color: var(--warn); color: var(--warn); background: rgba(240,184,109,0.08); }
+
+    .board-add-btn {
+      padding: 7px 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      align-self: flex-end;
+      transition: opacity 0.15s;
+    }
+    .board-add-btn:hover { opacity: 0.85; }
+
+    .board-empty {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+      padding: 20px 10px;
+      line-height: 1.6;
+    }
+
+    /* ── Board cards ── */
+    #board-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .board-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .card-del-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 2px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .card-del-btn:hover { color: var(--error); }
+
+    .card-text {
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .card-source {
+      font-size: 0.68rem;
+      color: #55558a;
+    }
+
+    .card-note-input {
+      min-height: 36px;
+      font-size: 0.76rem;
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      resize: none;
+    }
+    .card-note-input:focus { border-color: var(--accent); color: var(--text); }
+
+    /* ── Board Insight ── */
+    .board-insight {
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, rgba(124,109,240,0.1), rgba(62,207,184,0.06));
+      border: 1px solid rgba(124,109,240,0.22);
+      margin-top: 4px;
+    }
+    .board-insight.hidden { display: none; }
+
+    .board-insight-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.95rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      transition: color 0.15s;
+      font-family: inherit;
+    }
+    .icon-btn:hover { color: var(--accent); }
+
+    #board-insight-text {
+      font-size: 0.79rem;
+      color: #c0c0e0;
+      line-height: 1.6;
+    }
+    #board-insight-text .md h2,
+    #board-insight-text .md h3 { font-size: 0.82rem; margin: 0.6em 0 0.3em; }
+    #board-insight-text .md p  { margin-bottom: 0.5em; font-size: 0.79rem; }
+    #board-insight-text .md ul { margin: 0.3em 0 0.5em 1em; }
+
+    /* ── Insights panel ── */
+    .insights-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .insight-section {
+      padding: 10px 0;
+    }
+
+    .insight-sep {
+      height: 1px;
+      background: var(--border);
+      margin: 2px 0;
+    }
+
+    .insight-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .connection-item {
+      padding: 7px 10px 7px 11px;
+      border-left: 3px solid var(--accent);
+      background: var(--surface2);
+      border-radius: 0 8px 8px 0;
+      font-size: 0.78rem;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.5;
+    }
+
+    .blocker-text {
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.55;
+      margin-bottom: 8px;
+    }
+
+    .blocker-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .fix-btn {
+      padding: 5px 12px;
+      background: rgba(124,109,240,0.15);
+      border: 1px solid rgba(124,109,240,0.4);
+      border-radius: 8px;
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .fix-btn:hover { background: rgba(124,109,240,0.25); }
+
+    .defer-btn {
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .defer-btn:hover { border-color: var(--muted); color: var(--text); }
+
+    .suggestion-text {
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.55;
+      margin-bottom: 10px;
+      min-height: 40px;
+    }
+
+    .suggestion-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dot-nav {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.15s;
+    }
+    .dot.active { background: var(--accent); }
+
+    .suggestion-btns {
+      display: flex;
+      gap: 4px;
+    }
+
+    .sug-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .sug-btn.accept:hover { border-color: var(--green); color: var(--green); background: rgba(78,203,122,0.08); }
+    .sug-btn.reject:hover { border-color: var(--error); color: var(--error); background: rgba(240,109,124,0.08); }
+    .sug-btn.next:hover   { border-color: var(--accent); color: var(--accent); background: rgba(124,109,240,0.08); }
+
+    .insight-empty {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .insight-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .panel-refresh-btn {
+      margin-top: 10px;
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .panel-refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Roadmap ── */
+    .roadmap-view-btns {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .view-btn {
+      flex: 1;
+      padding: 6px 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .view-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(124,109,240,0.1); }
+    .view-btn:hover:not(.active) { border-color: var(--muted); color: var(--text); }
+
+    .roadmap-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* Journey view */
+    .journey-timeline {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .journey-step {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .step-marker {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .journey-step.done .step-marker    { border-color: var(--green); color: var(--green); background: rgba(78,203,122,0.1); }
+    .journey-step.current .step-marker { border-color: var(--accent); color: var(--accent); background: rgba(124,109,240,0.15); }
+    .journey-step.pending .step-marker { border-color: var(--border); color: var(--muted); }
+
+    .step-body { flex: 1; padding-bottom: 14px; }
+    .step-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .journey-step.done .step-title    { color: var(--muted); }
+    .journey-step.current .step-title { color: var(--accent); }
+    .journey-step.pending .step-title { color: #5a5a7a; }
+
+    .step-desc {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-top: 2px;
+    }
+
+    .step-blocker {
+      margin-top: 5px;
+      font-size: 0.73rem;
+      color: var(--warn);
+      padding: 4px 8px;
+      background: rgba(240,184,109,0.08);
+      border: 1px solid rgba(240,184,109,0.2);
+      border-radius: 6px;
+    }
+
+    .step-connector {
+      width: 2px;
+      height: 16px;
+      background: var(--border);
+      margin-left: 10px;
+    }
+
+    /* Phase view */
+    .phase-group {
+      margin-bottom: 8px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .phase-header {
+      padding: 5px 10px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--surface2);
+      color: var(--muted);
+    }
+    .phase-group.done .phase-header    { background: rgba(78,203,122,0.08); color: var(--green); }
+    .phase-group.current .phase-header { background: rgba(124,109,240,0.1); color: var(--accent); }
+
+    .phase-task {
+      padding: 5px 10px;
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .phase-task.done    { text-decoration: line-through; color: #44446a; }
+    .phase-task.current { color: var(--text); font-weight: 500; }
+    .phase-task.pending { color: #4a4a6a; }
+
+    /* Canvas view */
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .canvas-cell {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .canvas-label {
+      font-size: 0.64rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .canvas-value {
+      font-size: 0.75rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    /* ── Save selection button ── */
+    .save-sel-btn {
+      position: fixed;
+      z-index: 9999;
+      padding: 6px 14px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      white-space: nowrap;
+      pointer-events: all;
+      transition: opacity 0.1s, transform 0.1s;
+    }
+    .save-sel-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .save-sel-btn.hidden { display: none; }
+
     /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .right-panel { display: none; }
+    }
     @media (max-width: 600px) {
       header { padding: 14px 16px; }
       .layout { padding: 20px 14px 70px; }
       .msg-user-bubble { max-width: 88%; }
       .msg-ai-card, #streaming-card { padding: 16px; }
-      .tab { padding: 7px 12px; font-size: 0.8rem; }
     }
   </style>
 </head>
@@ -472,40 +1041,152 @@
   </div>
 </header>
 
-<div class="layout">
+<div class="app-body">
 
-  <!-- Conversation history -->
-  <div id="conversation"></div>
+  <!-- ── Main chat column ── -->
+  <div class="main-col">
+    <div class="layout">
 
-  <!-- Active streaming area -->
-  <div class="msg-ai" id="streaming-wrap" style="display:none">
-    <div class="msg-ai-header">
-      <div class="ai-dot">◎</div>
-      <span id="streaming-label">Analyzing...</span>
+      <!-- Conversation history -->
+      <div id="conversation"></div>
+
+      <!-- Active streaming area -->
+      <div class="msg-ai" id="streaming-wrap" style="display:none">
+        <div class="msg-ai-header">
+          <div class="ai-dot">◎</div>
+          <span id="streaming-label">Analyzing...</span>
+        </div>
+        <div id="streaming-status"></div>
+        <div id="streaming-card" class="md"></div>
+      </div>
+
+      <!-- Loading indicator -->
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <span id="loading-txt">Searching the web...</span>
+      </div>
+
+      <!-- Input -->
+      <div class="input-card">
+        <textarea id="msg" placeholder="Describe your business idea, market, or question — I'll research it with real web data..."></textarea>
+        <div class="input-footer">
+          <span class="hint">Ctrl + Enter to submit</span>
+          <button class="submit-btn" id="send-btn">Analyze →</button>
+        </div>
+      </div>
+
     </div>
-    <div id="streaming-status"></div>
-    <div id="streaming-card" class="md"></div>
   </div>
 
-  <!-- Loading indicator -->
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <span id="loading-txt">Searching the web...</span>
-  </div>
+  <!-- ── Right Panel ── -->
+  <aside class="right-panel">
 
-  <!-- Input -->
-  <div class="input-card">
-    <textarea id="msg" placeholder="Describe your business idea, market, or question — I'll research it with real web data..."></textarea>
-    <div class="input-footer">
-      <span class="hint">Ctrl + Enter to submit</span>
-      <button class="submit-btn" id="send-btn">Analyze →</button>
+    <div class="panel-tabs">
+      <button class="ptab active" data-panel="board">MY BOARD</button>
+      <button class="ptab" data-panel="insights">INSIGHTS</button>
+      <button class="ptab" data-panel="roadmap">ROADMAP</button>
     </div>
-  </div>
 
+    <!-- MY BOARD -->
+    <div class="panel-content" id="panel-board">
+      <div class="board-entry">
+        <textarea id="board-input" placeholder="Type a note..." rows="2"></textarea>
+        <div class="tag-row">
+          <button class="tag-btn active" data-tag="opportunity">💡 Oppty</button>
+          <button class="tag-btn" data-tag="risk">⚠️ Risk</button>
+          <button class="tag-btn" data-tag="key-insight">🔑 Insight</button>
+          <button class="tag-btn" data-tag="question">❓ Question</button>
+          <button class="tag-btn" data-tag="my-note">📝 Note</button>
+        </div>
+        <button class="board-add-btn" id="board-add-btn">+ Add to Board</button>
+      </div>
+
+      <div id="board-cards">
+        <div class="board-empty">No cards yet.<br>Add a note above or select text from any AI response.</div>
+      </div>
+
+      <div class="board-insight hidden" id="board-insight-section">
+        <div class="board-insight-header">
+          <span>✦ Board Insight</span>
+          <button class="icon-btn" id="refresh-insight-btn" title="Refresh insight">↻</button>
+        </div>
+        <div id="board-insight-text"></div>
+      </div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="panel-content hidden" id="panel-insights">
+      <div class="insights-panel">
+
+        <div class="insight-section">
+          <div class="insight-section-label">🔗 Connections</div>
+          <div id="connections-list">
+            <span class="insight-empty">Add board cards or start researching to find connections.</span>
+          </div>
+        </div>
+
+        <div class="insight-sep"></div>
+
+        <div class="insight-section">
+          <div class="insight-section-label">🚧 Blocker</div>
+          <div class="blocker-text" id="blocker-text">
+            <span class="insight-empty">No blockers detected yet.</span>
+          </div>
+          <div class="blocker-actions" id="blocker-actions" style="display:none">
+            <button class="fix-btn" id="fix-now-btn">Fix now</button>
+            <button class="defer-btn" id="later-btn">Later</button>
+          </div>
+        </div>
+
+        <div class="insight-sep"></div>
+
+        <div class="insight-section">
+          <div class="insight-section-label">💡 Suggestion</div>
+          <div class="suggestion-text" id="suggestion-text">
+            <span class="insight-empty">Refresh to generate suggestions.</span>
+          </div>
+          <div class="suggestion-footer">
+            <div class="dot-nav" id="suggestion-dots"></div>
+            <div class="suggestion-btns">
+              <button class="sug-btn accept" id="accept-suggestion-btn" title="Accept — save to board">✓</button>
+              <button class="sug-btn reject" id="reject-suggestion-btn" title="Reject">✗</button>
+              <button class="sug-btn next"   id="next-suggestion-btn"   title="Next suggestion">→</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <button class="panel-refresh-btn" id="refresh-insights-btn">↻ Refresh Insights</button>
+    </div>
+
+    <!-- ROADMAP -->
+    <div class="panel-content hidden" id="panel-roadmap">
+      <div class="roadmap-view-btns">
+        <button class="view-btn active" data-view="journey">Yolculuk</button>
+        <button class="view-btn" data-view="phase">Faz</button>
+        <button class="view-btn" data-view="canvas">Kanvas</button>
+      </div>
+
+      <div class="roadmap-content" id="roadmap-content">
+        <span class="insight-empty">Start a conversation to generate your roadmap.</span>
+      </div>
+
+      <button class="panel-refresh-btn" id="generate-roadmap-btn">↻ Generate Roadmap</button>
+    </div>
+
+  </aside>
 
 </div>
 
+<!-- Floating save-to-board button -->
+<div id="save-sel-btn" class="save-sel-btn hidden">💾 Save to Board</div>
+
 <script>
+// ════════════════════════════════════════════════════════════════
+// CHAT (existing logic)
+// ════════════════════════════════════════════════════════════════
+
 const TABS = {
   analyze: {
     label: 'Market Analysis',
@@ -521,7 +1202,7 @@ const TABS = {
   },
   validate: {
     label: 'Idea Validation',
-    placeholder: 'Describe your business idea in detail — I\'ll validate it against real market data...',
+    placeholder: "Describe your business idea in detail — I'll validate it against real market data...",
     btnText: 'Validate →',
     loading: 'Validating your idea with real data...',
   },
@@ -544,14 +1225,12 @@ let busy = false;
 let conversationHistory = [];
 let messageCount = 0;
 
-// Session cache: key = `${tab}:${normalizedMsg}` → {text, sources, meta}
 const searchCache = new Map();
 
 function getCacheKey(tab, msg) {
   return `${tab}:${msg.toLowerCase().replace(/\s+/g, ' ').trim()}`;
 }
 
-// Mirror of backend classifier — determines search depth label shown to user
 function classifyDepth(msg) {
   const lower = msg.toLowerCase();
   const deepSignals = ['analyze','analysis','comprehensive','deep dive','compare','landscape',
@@ -566,7 +1245,6 @@ function classifyDepth(msg) {
   return 'moderate';
 }
 
-// Frontend source quality classifier (mirrors backend)
 const TRUSTED_DOMAINS_FE = new Set([
   'reuters.com','bloomberg.com','wsj.com','ft.com','economist.com','apnews.com',
   'bbc.com','nytimes.com','theguardian.com','techcrunch.com','wired.com','forbes.com',
@@ -592,16 +1270,15 @@ const streamLabel = document.getElementById('streaming-label');
 const streamStatus= document.getElementById('streaming-status');
 const clearBtn    = document.getElementById('clear-btn');
 
-
-// ── Clear session ──
 clearBtn.addEventListener('click', () => {
   conversationHistory = [];
   messageCount = 0;
   searchCache.clear();
   convoEl.innerHTML = '';
+  insightsData = null;
+  roadmapData = null;
   renderWelcome();
 });
-
 
 function renderWelcome() {
   if (conversationHistory.length === 0) {
@@ -620,13 +1297,11 @@ function renderWelcome() {
   }
 }
 
-// ── Events ──
 sendBtn.addEventListener('click', analyze);
 msgEl.addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); analyze(); }
 });
 
-// ── Analyze ──
 async function analyze() {
   const msg = msgEl.value.trim();
   if (!msg || busy) return;
@@ -640,13 +1315,14 @@ async function analyze() {
 
   appendUserBubble(msg);
 
-  // Check session cache first
   const cacheKey = getCacheKey(activeTab, msg);
   const cached = searchCache.get(cacheKey);
   if (cached) {
     appendAiMessage(cached.text, cached.sources, cached.meta, null, true, msg);
     conversationHistory.push({ role: 'user', content: msg });
     conversationHistory.push({ role: 'assistant', content: cached.text });
+    insightsData = null;
+    roadmapData = null;
     busy = false;
     sendBtn.disabled = false;
     msgEl.focus();
@@ -692,7 +1368,6 @@ async function analyze() {
     let raw = '';
 
     function extractData(str) {
-      // Greedy match — finds the LAST --> in string, safe when JSON contains -->
       const m = str.match(/<!--DATA:([\s\S]+)-->[\s]*$/);
       if (!m) return str;
       try {
@@ -706,14 +1381,12 @@ async function analyze() {
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        // Flush decoder and do a final DATA sentinel check
         raw += decoder.decode();
         raw = extractData(raw);
         break;
       }
       raw += decoder.decode(value, { stream: true });
 
-      // Status markers
       raw = raw.replace(/<!--STATUS:([^-]+)-->/g, (_, statusMsg) => {
         streamStatus.innerHTML = `<div class="status-pill"><div class="spinner" style="width:10px;height:10px;border-width:1.5px"></div>${escHtml(statusMsg)}</div>`;
         return '';
@@ -727,17 +1400,19 @@ async function analyze() {
     }
 
     streamStatus.innerHTML = '';
-    // Hide streaming area and immediately show final message (no intermediate re-render to avoid flash)
     streamWrap.style.display = 'none';
     streamCard.classList.remove('on');
     streamCard.innerHTML = '';
     appendAiMessage(fullText, sources, meta, null, false, msg);
 
-    // Cache the result for this session
     searchCache.set(cacheKey, { text: fullText, sources, meta });
 
     conversationHistory.push({ role: 'user', content: msg });
     conversationHistory.push({ role: 'assistant', content: fullText });
+
+    // Invalidate panel caches after new research
+    insightsData = null;
+    roadmapData = null;
 
   } catch (err) {
     loadingEl.classList.remove('on');
@@ -780,12 +1455,10 @@ function appendAiMessage(text, sources, meta, errorMsg, fromCache, userQuery) {
     card.innerHTML = marked.parse(text);
     wrap.appendChild(card);
 
-    // Always show Source Analysis — use fallback meta if DATA sentinel wasn't received
     const effectiveMeta = meta || { scanned: 0, verified: 0, conflicting: 0, searchCount: 0, depth: 'unknown' };
     const footer = buildSourcesUI(sources || [], effectiveMeta, fromCache);
     if (footer) wrap.appendChild(footer);
 
-    // Dynamic follow-up buttons — skip for simple queries and cached responses
     const depth = classifyDepth(userQuery || '');
     if (depth !== 'simple') {
       const btnsContainer = document.createElement('div');
@@ -825,7 +1498,7 @@ async function fetchSuggestions(responseText, tab, userQuery, container) {
     });
 
     container.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  } catch { /* silent — buttons are optional */ }
+  } catch { /* silent */ }
 }
 
 function buildSourceExplanation(scanned, verified, conflicting, searchCount) {
@@ -854,12 +1527,8 @@ function buildSourcesUI(sources, meta, fromCache) {
   const conflicting = meta?.conflicting ?? 0;
   const searchCount = meta?.searchCount ?? 0;
 
-  const trustClass = verified >= 2 ? 'trust-high' : verified === 1 ? 'trust-med' : 'trust-low';
-  const trustText  = verified >= 2 ? '✅ Verified' : verified === 1 ? '⚠️ Single source' : '❌ No sources';
-
   const container = document.createElement('div');
 
-  // ── Source Analysis header ──
   const sa = document.createElement('div');
   sa.className = 'source-analysis';
 
@@ -887,7 +1556,6 @@ function buildSourcesUI(sources, meta, fromCache) {
     sa.appendChild(expEl);
   }
 
-  // ── Source pills ──
   if (sources.length > 0) {
     const row = document.createElement('div');
     row.className = 'sources-row';
@@ -946,9 +1614,413 @@ function escHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
-// Init
 renderWelcome();
 
+// ════════════════════════════════════════════════════════════════
+// RIGHT PANEL
+// ════════════════════════════════════════════════════════════════
+
+const TAG_CONFIG = {
+  opportunity:  { label: '💡 Opportunity', color: 'var(--green)'  },
+  risk:         { label: '⚠️ Risk',        color: 'var(--error)'  },
+  'key-insight':{ label: '🔑 Key Insight', color: 'var(--accent)' },
+  question:     { label: '❓ Question',    color: 'var(--accent2)'},
+  'my-note':    { label: '📝 My Note',     color: 'var(--warn)'   },
+};
+
+let boardCards = [];
+let boardActiveTag = 'opportunity';
+let insightsData = null;
+let activeSuggestionIdx = 0;
+let roadmapData = null;
+let activeRoadmapView = 'journey';
+let insightDebounce = null;
+
+// ── Panel tab switching ──
+document.querySelectorAll('.ptab').forEach(btn => {
+  btn.addEventListener('click', () => switchPanelTab(btn.dataset.panel));
+});
+
+function switchPanelTab(tabId) {
+  document.querySelectorAll('.ptab').forEach(b => b.classList.toggle('active', b.dataset.panel === tabId));
+  document.querySelectorAll('.panel-content').forEach(p => p.classList.toggle('hidden', p.id !== `panel-${tabId}`));
+
+  if (tabId === 'insights' && !insightsData) {
+    if (boardCards.length > 0 || conversationHistory.length > 0) generateInsights();
+  }
+  if (tabId === 'roadmap' && !roadmapData && conversationHistory.length > 0) {
+    generateRoadmap();
+  }
+}
+
+// ── Tag selection ──
+document.querySelectorAll('.tag-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    boardActiveTag = btn.dataset.tag;
+    document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// ── Add board card manually ──
+document.getElementById('board-add-btn').addEventListener('click', () => {
+  const input = document.getElementById('board-input');
+  const text = input.value.trim();
+  if (!text) return;
+  addBoardCard(text, 'manual');
+  input.value = '';
+});
+
+document.getElementById('board-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); document.getElementById('board-add-btn').click(); }
+});
+
+function addBoardCard(text, source, tag = null) {
+  const card = {
+    id: Date.now() + Math.random(),
+    tag: tag || boardActiveTag,
+    text,
+    note: '',
+    source,
+  };
+  boardCards.unshift(card);
+  renderBoardCards();
+  insightsData = null;
+  clearTimeout(insightDebounce);
+  if (boardCards.length >= 1) {
+    insightDebounce = setTimeout(generateBoardInsight, 1800);
+  }
+}
+
+function renderBoardCards() {
+  const container = document.getElementById('board-cards');
+  if (boardCards.length === 0) {
+    container.innerHTML = '<div class="board-empty">No cards yet.<br>Add a note above or select text from any AI response.</div>';
+    document.getElementById('board-insight-section').classList.add('hidden');
+    return;
+  }
+
+  container.innerHTML = '';
+  boardCards.forEach(card => {
+    const cfg = TAG_CONFIG[card.tag] || TAG_CONFIG['my-note'];
+    const div = document.createElement('div');
+    div.className = 'board-card';
+    div.innerHTML = `
+      <div class="card-header">
+        <span class="card-tag" style="color:${cfg.color}">${cfg.label}</span>
+        <button class="card-del-btn" title="Remove">×</button>
+      </div>
+      <div class="card-text">${escHtml(card.text)}</div>
+      <div class="card-source">${card.source === 'ai' ? '🤖 From AI response' : '✍️ Your note'}</div>
+      <textarea class="card-note-input" placeholder="Add your note..." rows="2">${escHtml(card.note)}</textarea>
+    `;
+    div.querySelector('.card-del-btn').addEventListener('click', () => {
+      boardCards = boardCards.filter(c => c.id !== card.id);
+      insightsData = null;
+      renderBoardCards();
+      if (boardCards.length > 0) generateBoardInsight();
+    });
+    div.querySelector('.card-note-input').addEventListener('input', e => {
+      const c = boardCards.find(c => c.id === card.id);
+      if (c) c.note = e.target.value;
+    });
+    container.appendChild(div);
+  });
+}
+
+async function generateBoardInsight() {
+  if (boardCards.length === 0) return;
+  const section = document.getElementById('board-insight-section');
+  const textEl = document.getElementById('board-insight-text');
+  section.classList.remove('hidden');
+  textEl.innerHTML = '<div class="insight-loading"><div class="spinner" style="width:11px;height:11px;border-width:1.5px"></div> Analyzing...</div>';
+
+  try {
+    const res = await fetch('/api/board-insight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cards: boardCards.map(c => ({ tag: c.tag, text: c.text, note: c.note })) }),
+    });
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    textEl.textContent = data.insight || 'No insight generated.';
+  } catch {
+    textEl.innerHTML = '<span style="color:var(--muted);font-size:0.78rem">Couldn\'t generate insight.</span>';
+  }
+}
+
+document.getElementById('refresh-insight-btn').addEventListener('click', generateBoardInsight);
+
+// ── Text selection → Save to Board ──
+const saveSelBtn = document.getElementById('save-sel-btn');
+let selTimer = null;
+
+document.addEventListener('mouseup', () => {
+  clearTimeout(selTimer);
+  selTimer = setTimeout(() => {
+    const sel = window.getSelection();
+    const txt = sel?.toString().trim();
+    if (!txt || txt.length < 15 || txt.length > 1200) { hideSelBtn(); return; }
+
+    let node = sel.anchorNode;
+    let inAiCard = false;
+    while (node) {
+      if (node.classList?.contains('msg-ai-card') || node.id === 'streaming-card') {
+        inAiCard = true; break;
+      }
+      node = node.parentElement;
+    }
+    if (!inAiCard) { hideSelBtn(); return; }
+
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const btnW = 160;
+    saveSelBtn.style.top  = `${rect.top - 44}px`;
+    saveSelBtn.style.left = `${Math.max(8, Math.min(rect.left + rect.width / 2 - btnW / 2, window.innerWidth - btnW - 8))}px`;
+    saveSelBtn.classList.remove('hidden');
+    saveSelBtn.dataset.text = txt;
+  }, 80);
+});
+
+document.addEventListener('mousedown', e => {
+  if (e.target !== saveSelBtn) hideSelBtn();
+});
+
+saveSelBtn.addEventListener('mousedown', e => e.preventDefault());
+saveSelBtn.addEventListener('click', () => {
+  const txt = saveSelBtn.dataset.text;
+  if (txt) {
+    addBoardCard(txt, 'ai');
+    switchPanelTab('board');
+  }
+  hideSelBtn();
+  window.getSelection()?.removeAllRanges();
+});
+
+function hideSelBtn() { saveSelBtn.classList.add('hidden'); }
+
+// ── INSIGHTS ──
+async function generateInsights() {
+  const connList = document.getElementById('connections-list');
+  const blockerEl = document.getElementById('blocker-text');
+  const suggEl = document.getElementById('suggestion-text');
+  const loadHtml = '<div class="insight-loading"><div class="spinner" style="width:11px;height:11px;border-width:1.5px"></div></div>';
+  connList.innerHTML = loadHtml;
+  blockerEl.innerHTML = loadHtml;
+  suggEl.innerHTML = loadHtml;
+  document.getElementById('blocker-actions').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/insights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cards: boardCards.map(c => ({ tag: c.tag, text: c.text })),
+        history: conversationHistory.slice(-8),
+      }),
+    });
+    if (!res.ok) throw new Error('Failed');
+    insightsData = await res.json();
+    renderInsights();
+  } catch {
+    connList.innerHTML = '<span class="insight-empty">Couldn\'t load insights.</span>';
+    blockerEl.innerHTML = '<span class="insight-empty">Couldn\'t load.</span>';
+    suggEl.innerHTML = '<span class="insight-empty">Couldn\'t load.</span>';
+  }
+}
+
+function renderInsights() {
+  if (!insightsData) return;
+
+  // Connections
+  const connList = document.getElementById('connections-list');
+  if (insightsData.connections?.length > 0) {
+    connList.innerHTML = insightsData.connections.map(c => {
+      const color = (typeof c === 'object' ? c.color : null) || '#7c6df0';
+      const text = typeof c === 'object' ? c.text : c;
+      return `<div class="connection-item" style="border-left-color:${escHtml(color)}">${escHtml(text)}</div>`;
+    }).join('');
+  } else {
+    connList.innerHTML = '<span class="insight-empty">Add more board cards to find connections.</span>';
+  }
+
+  // Blocker
+  const blockerEl = document.getElementById('blocker-text');
+  if (insightsData.blocker) {
+    blockerEl.textContent = insightsData.blocker;
+    document.getElementById('blocker-actions').style.display = 'flex';
+  } else {
+    blockerEl.innerHTML = '<span class="insight-empty">No blockers detected.</span>';
+    document.getElementById('blocker-actions').style.display = 'none';
+  }
+
+  // Suggestions
+  activeSuggestionIdx = 0;
+  renderSuggestion();
+}
+
+function renderSuggestion() {
+  const suggEl = document.getElementById('suggestion-text');
+  const dotsEl = document.getElementById('suggestion-dots');
+  const sugs = insightsData?.suggestions || [];
+
+  if (!sugs.length) {
+    suggEl.innerHTML = '<span class="insight-empty">No suggestions generated.</span>';
+    dotsEl.innerHTML = '';
+    return;
+  }
+
+  suggEl.textContent = sugs[activeSuggestionIdx] || '';
+  dotsEl.innerHTML = sugs.map((_, i) =>
+    `<span class="dot${i === activeSuggestionIdx ? ' active' : ''}"></span>`
+  ).join('');
+}
+
+document.getElementById('refresh-insights-btn').addEventListener('click', () => {
+  insightsData = null;
+  generateInsights();
+});
+
+document.getElementById('fix-now-btn').addEventListener('click', () => {
+  if (insightsData?.blocker) {
+    msgEl.value = `How can I address this blocker: ${insightsData.blocker}`;
+    msgEl.focus();
+    document.querySelector('.main-col').scrollTo({ top: document.querySelector('.main-col').scrollHeight, behavior: 'smooth' });
+  }
+});
+
+document.getElementById('later-btn').addEventListener('click', () => {
+  document.getElementById('blocker-text').innerHTML = '<span style="color:var(--muted);font-size:0.78rem">Deferred for now.</span>';
+  document.getElementById('blocker-actions').style.display = 'none';
+});
+
+document.getElementById('accept-suggestion-btn').addEventListener('click', () => {
+  const sug = insightsData?.suggestions?.[activeSuggestionIdx];
+  if (sug) { addBoardCard(sug, 'ai', 'key-insight'); switchPanelTab('board'); }
+});
+
+document.getElementById('reject-suggestion-btn').addEventListener('click', () => {
+  if (!insightsData?.suggestions?.length) return;
+  insightsData.suggestions.splice(activeSuggestionIdx, 1);
+  activeSuggestionIdx = Math.min(activeSuggestionIdx, Math.max(0, insightsData.suggestions.length - 1));
+  renderSuggestion();
+});
+
+document.getElementById('next-suggestion-btn').addEventListener('click', () => {
+  const sugs = insightsData?.suggestions;
+  if (!sugs?.length) return;
+  activeSuggestionIdx = (activeSuggestionIdx + 1) % sugs.length;
+  renderSuggestion();
+});
+
+// ── ROADMAP ──
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeRoadmapView = btn.dataset.view;
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === activeRoadmapView));
+    if (roadmapData) renderRoadmap();
+  });
+});
+
+document.getElementById('generate-roadmap-btn').addEventListener('click', () => {
+  roadmapData = null;
+  generateRoadmap();
+});
+
+async function generateRoadmap() {
+  const container = document.getElementById('roadmap-content');
+  container.innerHTML = '<div class="insight-loading"><div class="spinner" style="width:13px;height:13px;border-width:2px"></div> Building roadmap...</div>';
+
+  if (!conversationHistory.length) {
+    container.innerHTML = '<span class="insight-empty">Start a conversation first, then generate your roadmap.</span>';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/roadmap', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        history: conversationHistory.slice(-12),
+        cards: boardCards.map(c => ({ tag: c.tag, text: c.text })),
+      }),
+    });
+    if (!res.ok) throw new Error('Failed');
+    roadmapData = await res.json();
+    renderRoadmap();
+  } catch {
+    container.innerHTML = '<span class="insight-empty">Couldn\'t generate roadmap. Try after doing some research.</span>';
+  }
+}
+
+function renderRoadmap() {
+  if (!roadmapData) return;
+  const container = document.getElementById('roadmap-content');
+  if (activeRoadmapView === 'journey') renderJourney(container);
+  else if (activeRoadmapView === 'phase') renderPhase(container);
+  else renderCanvas(container);
+}
+
+function renderJourney(container) {
+  const steps = roadmapData.steps || [];
+  if (!steps.length) {
+    container.innerHTML = '<span class="insight-empty">No steps generated.</span>';
+    return;
+  }
+  const blocker = roadmapData.blocker;
+  container.innerHTML = `<div class="journey-timeline">${steps.map((step, i) => `
+    <div class="journey-step ${step.status || 'pending'}">
+      <div class="step-marker">${step.status === 'done' ? '✓' : step.status === 'current' ? '▶' : i + 1}</div>
+      <div class="step-body">
+        <div class="step-title">${escHtml(step.title || '')}</div>
+        <div class="step-desc">${escHtml(step.description || '')}</div>
+        ${step.status === 'current' && blocker ? `<div class="step-blocker">🚧 ${escHtml(blocker)}</div>` : ''}
+      </div>
+    </div>
+    ${i < steps.length - 1 ? '<div class="step-connector"></div>' : ''}
+  `).join('')}</div>`;
+}
+
+function renderPhase(container) {
+  const steps = roadmapData.steps || [];
+  if (!steps.length) { container.innerHTML = '<span class="insight-empty">No steps generated.</span>'; return; }
+
+  const phases = {};
+  steps.forEach(s => {
+    const p = s.phase || 'General';
+    if (!phases[p]) phases[p] = [];
+    phases[p].push(s);
+  });
+
+  container.innerHTML = Object.entries(phases).map(([phase, psteps]) => {
+    const hasCurrentOrDone = psteps.some(s => s.status === 'current' || s.status === 'done');
+    const allDone = psteps.every(s => s.status === 'done');
+    const hasCurrent = psteps.some(s => s.status === 'current');
+    const cls = allDone ? 'done' : hasCurrent ? 'current' : 'pending';
+    return `<div class="phase-group ${cls}">
+      <div class="phase-header">${escHtml(phase)}</div>
+      ${psteps.map(s => `<div class="phase-task ${s.status || 'pending'}">${escHtml(s.title || '')}</div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderCanvas(container) {
+  const canvas = roadmapData.canvas || {};
+  const cells = [
+    { key: 'problem',   label: '🎯 Problem'    },
+    { key: 'solution',  label: '💡 Solution'   },
+    { key: 'market',    label: '📊 Market'     },
+    { key: 'revenue',   label: '💰 Revenue'    },
+    { key: 'risk',      label: '⚠️ Risk'       },
+    { key: 'advantage', label: '🚀 Advantage'  },
+  ];
+  container.innerHTML = `<div class="canvas-grid">${cells.map(c =>
+    `<div class="canvas-cell">
+      <div class="canvas-label">${c.label}</div>
+      <div class="canvas-value">${escHtml(canvas[c.key] || 'TBD')}</div>
+    </div>`
+  ).join('')}</div>`;
+}
 </script>
 
 </body>
