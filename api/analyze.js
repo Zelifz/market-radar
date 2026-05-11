@@ -15,11 +15,18 @@ const TRUSTED_DOMAINS = new Set([
   'sec.gov','census.gov','bls.gov','worldbank.org','imf.org','oecd.org',
   'gartner.com','idc.com','forrester.com','nielsen.com',
   'nature.com','science.org','arxiv.org','investopedia.com','wikipedia.org',
+  'shopify.com/blog','a16z.com','sequoiacap.com','ycombinator.com',
+  'venturebeat.com','thenextweb.com','arstechnica.com','theatlantic.com',
+  'ft.com','handelsblatt.com','nikkei.com','scmp.com',
 ]);
 
 const LOW_QUALITY_DOMAINS = new Set([
   'quora.com','pinterest.com','instagram.com','facebook.com',
   'twitter.com','x.com','tiktok.com','snapchat.com','tumblr.com',
+  'reddit.com','medium.com','substack.com','blogspot.com','wordpress.com',
+  'yahoo.com','answers.com','ask.com','ehow.com','wikihow.com',
+  'buzzfeed.com','huffpost.com','dailymail.co.uk','thesun.co.uk',
+  'fiverr.com','upwork.com','freelancer.com','guru.com',
 ]);
 
 function classifySource(url) {
@@ -27,6 +34,8 @@ function classifySource(url) {
     const domain = new URL(url).hostname.replace('www.', '');
     if (TRUSTED_DOMAINS.has(domain)) return 'trusted';
     if (LOW_QUALITY_DOMAINS.has(domain)) return 'low';
+    // Extra low-quality signals
+    if (domain.includes('blog.') || domain.endsWith('.blogspot.com')) return 'low';
     return 'neutral';
   } catch { return 'neutral'; }
 }
@@ -37,21 +46,34 @@ function classifyDepth(message) {
     'analyze','analysis','comprehensive','deep dive','deep-dive','compare','comparison',
     'landscape','sector','industry','market','competitive','validate','report',
     'trends','forecast','projection','strategy','opportunities','challenges',
-    'full','complete','overview','breakdown','research',
+    'full','complete','overview','breakdown','research','analiz','pazar','rekabet',
+    'sektör','strateji','fırsat','tehdit','büyüme','gelecek','tahmin',
   ];
   const simpleSignals = [
     'what is','what are','who is','when was','when did','where is',
     'how much does','how many','define','definition','price of','cost of',
-    'founded','headquarters',
+    'founded','headquarters','nedir','kimdir','ne zaman','kaç',
   ];
   const hasDeep = deepSignals.some(k => lower.includes(k));
   const hasSimple = simpleSignals.some(k => lower.includes(k));
-  if (hasSimple && !hasDeep && message.length < 120) return 'simple';
-  if (hasDeep || message.length > 150) return 'deep';
+  if (hasSimple && !hasDeep && message.length < 100) return 'simple';
+  if (hasDeep || message.length > 120) return 'deep';
   return 'moderate';
 }
 
-async function search(query, apiKey, depth = 'moderate') {
+function buildAngleQuery(message, tab) {
+  const base = message.trim();
+  const suffixes = {
+    analyze:     `${base} market size revenue statistics 2024 2025`,
+    competitors: `${base} top companies competitors market share comparison`,
+    validate:    `${base} customer problems demand pain points failure cases`,
+    deep:        `${base} industry outlook trends disruption future growth`,
+    crosscheck:  base,
+  };
+  return suffixes[tab] || `${base} latest data report 2025`;
+}
+
+async function search(query, apiKey, depth = 'moderate', maxResults = 8) {
   try {
     const res = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -60,7 +82,7 @@ async function search(query, apiKey, depth = 'moderate') {
         api_key: apiKey,
         query,
         search_depth: depth === 'deep' ? 'advanced' : 'basic',
-        max_results: 6,
+        max_results: maxResults,
         include_answer: false,
         include_raw_content: false,
       }),
@@ -71,84 +93,121 @@ async function search(query, apiKey, depth = 'moderate') {
   } catch { return []; }
 }
 
+function dedupeResults(results) {
+  const seen = new Set();
+  return results.filter(r => {
+    if (!r.url || seen.has(r.url)) return false;
+    seen.add(r.url);
+    return true;
+  });
+}
+
+function sortByQuality(results) {
+  const rank = r => {
+    const q = classifySource(r.url);
+    if (q === 'low') return 0;
+    if (q === 'trusted') return 2;
+    return 1;
+  };
+  return [...results].sort((a, b) => rank(b) - rank(a));
+}
+
 function formatResultsForAI(results) {
-  if (!results.length) return 'No search results found.';
+  if (!results.length) return 'Arama sonucu bulunamadı.';
   return results.map((r, i) =>
-    `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.content?.slice(0, 400) || ''}`
+    `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.content?.slice(0, 500) || ''}`
   ).join('\n\n');
 }
 
+// ─── SYSTEM PROMPTS ──────────────────────────────────────────────────────────
+// All prompts enforce Turkish language as the very first and last rule.
+
 const COMMON_SUFFIX = `
 
-**FORMAT — strict:**
-Use ## headers. Under each header: 2-3 bullet points MAX. No prose paragraphs. Bold every number and source name.
-Total response: 150-220 words. If more depth needed, end last bullet with "📎 Full breakdown available — ask for it."
+**FORMAT — katı kural:**
+## başlıkları kullan. Her başlık altında 3-5 madde. Önemli rakamları ve kaynak adlarını **kalın** yaz.
+Toplam yanıt: 300-450 kelime. Daha fazla derinlik gerekiyorsa son maddeye "📎 Tam analiz için sor." ekle.
 
-**HONESTY — non-negotiable:**
-- Every market size claim needs number + source + year. No "large market", no "booming sector".
-- Name the biggest obstacle first, not last.
-- If a giant already owns this space, lead with that.
-- If the idea needs a pivot to work, say exactly what that pivot is.
-- If the idea is physically impossible or fictional, say so in one line then suggest the closest realistic version.
+**DÜRÜSTLÜK — pazarlık götürmez:**
+- Her piyasa büyüklüğü iddiasında: rakam + kaynak + yıl zorunlu. "Büyük pazar" gibi belirsiz ifade kullanma.
+- Alanda güçlü bir oyuncu varsa ilk cümlede söyle.
+- Pivot gerekiyorsa tam olarak ne olduğunu belirt.
+- Fikir imkânsızsa söyle, sonra en yakın gerçekçi versiyonu öner.
 
-**CITATIONS — tag verification level:**
-- 2+ sources agree: ✅ **$X** *(Reuters + Statista, 2024)*
-- 1 source only: ⚠️ **$X** *(Forbes, 2024 — single source)*
+**KAYNAK ETİKETLEME:**
+- 2+ kaynak onaylıyor: ✅ **$X** *(Reuters + Statista, 2024)*
+- Tek kaynak: ⚠️ **$X** *(Forbes, 2024 — tek kaynak)*
 
-End with:
-> **Confidence:** ✅ HIGH — [reason] | ⚠️ MEDIUM — [reason] | ❌ LOW — [reason]`;
+Sona ekle:
+> **Güven:** ✅ YÜKSEK — [neden] | ⚠️ ORTA — [neden] | ❌ DÜŞÜK — [neden]
+
+**🇹🇷 DİL — KESİN KURAL: Yanıtını tamamen Türkçe yaz. İngilizce, Tayca veya başka bir dil kesinlikle kullanma.**`;
 
 const SYSTEM_PROMPTS = {
-  analyze: `You are a hard-nosed market research analyst. Search results are provided — use them as your primary data source.
+  analyze: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
 
-Structure every response with these exact headers and max 3 bullets each:
-## Market Size — real number, source, year. If declining or flat, say so.
-## Key Players — who owns this space already? Funding levels?
-## Entry Barriers — what stops a new player? Be specific.
-## Verdict — one sentence: proceed / pivot / avoid, and why.
+Sen sert bir pazar araştırma analistsin. Sağlanan arama sonuçlarını birincil kaynak olarak kullan.
 
-Cite every number: **$X.XB** ([Source Name](URL), Year)${COMMON_SUFFIX}`,
+Her yanıtı şu başlıklarla yapılandır (her birinde 3-5 madde):
+## Pazar Büyüklüğü — gerçek rakam, kaynak, yıl. Durağan veya küçülüyorsa söyle.
+## Kilit Oyuncular — bu alanı kim kontrol ediyor? Fonlama seviyeleri?
+## Giriş Engelleri — yeni bir oyuncuyu ne durdurur? Somut ol.
+## Görülmeyen Açılım — çoğu analistin gözden kaçırdığı 1 fırsat veya köşe nokta.
+## Karar — tek cümle: devam et / pivot yap / dur, nedeniyle birlikte.
 
-  competitors: `You are a competitive intelligence analyst. Search results are provided — use them, no guessing.
+Her rakamı kaynaklıyarak yaz: **$X.XB** ([Kaynak Adı](URL), Yıl)${COMMON_SUFFIX}`,
 
-Structure:
-## Market Control — is this space open or locked up by incumbents?
-## Top 3-5 Competitors — Name | Funding | Pricing | Biggest Weakness (one line each)
-## Realistic Entry Gap — what specific gap exists, if any?
-## Differentiation — one concrete angle a new entrant could own
+  competitors: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
 
-Cite sources. ⚠️ mark anything not found in the provided results.${COMMON_SUFFIX}`,
+Sen bir rekabet istihbarat analistsin. Arama sonuçlarını kullan, tahmin yürütme.
 
-  validate: `You are a startup idea validator. Search results are provided. Default stance: skepticism. Find reasons it WON'T work before reasons it will.
+Yapı:
+## Pazar Hakimiyeti — alan açık mı yoksa büyük oyuncular tarafından kilitli mi?
+## İlk 3-5 Rakip — İsim | Fonlama | Fiyatlandırma | En Büyük Zayıflık (her biri tek satır)
+## Gerçekçi Giriş Boşluğu — varsa hangi spesifik boşluk var?
+## Farklılaşma Açısı — yeni bir oyuncunun sahiplenebileceği somut bir pozisyon.
+## Görülmeyen Tehdit — rakiplerin henüz görmediği ama geliyor olan.
 
-Structure:
-## Problem Reality — do people actually pay to solve this today?
-## Market Evidence — TAM/SAM with source. If no data exists, say so.
-## Fatal Flaws — regulation, incumbents, unit economics, timing. Name the #1 killer.
-## Verdict — ✅ Proceed / ⚠️ Pivot (suggest the pivot) / ❌ Stop
+Kaynakları belirt. Arama sonuçlarında bulunamayan her şeyi ⚠️ ile işaretle.${COMMON_SUFFIX}`,
 
-Be direct. Don't soften.${COMMON_SUFFIX}`,
+  validate: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
 
-  deep: `You are a sector research analyst. Search results are provided — every claim needs a source from them.
+Sen bir girişim fikri doğrulayıcısısın. Arama sonuçlarını kullan. Varsayılan tutum: şüphecilik. Çalışmayacağı nedenleri çalışacağı nedenlerden önce bul.
 
-Structure (2-3 bullets each):
-## Sector Size & Growth — number, CAGR, source, year
-## Competitive Dynamics — who controls the market, concentration level
-## Key Risks — regulatory, tech disruption, cyclicality
-## Growth Drivers — what's actually pulling the market forward
-## Entry Recommendation — specific, honest, actionable
+Yapı:
+## Problem Gerçekliği — insanlar bugün bu sorunu çözmek için ödeme yapıyor mu?
+## Pazar Kanıtı — kaynaklı TAM/SAM. Veri yoksa söyle.
+## Ölümcül Kusurlar — regülasyon, büyük rakipler, birim ekonomisi, zamanlama. #1 katili önce söyle.
+## Pazar Sinyalleri — benzer girişimler başarısız olduysa nedeni neydi?
+## Karar — ✅ Devam Et / ⚠️ Pivot Yap (tam olarak ne yapılmalı) / ❌ Dur
 
-📎 Full Porter's Five Forces / SWOT available on request.${COMMON_SUFFIX}`,
+Yumuşatma yok. Doğrudan ol.${COMMON_SUFFIX}`,
 
-  crosscheck: `You are a fact-checker. Search results are provided — use them to verify or refute each claim.
+  deep: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
 
-Per claim:
-**Claim**: [claim]
-**Verdict**: ✅ VERIFIED | ⚠️ PARTIALLY TRUE | ❌ CONTRADICTED | ❓ UNVERIFIABLE
-**Best supporting source**: [source + date]
-**Best contradicting source**: [source + date, or "none found"]
+Sen bir sektör araştırma analistsin. Her iddia arama sonuçlarından kaynaklanmalı.
 
-End with overall reliability score and the single most important correction.${COMMON_SUFFIX}`,
+Yapı (her başlıkta 3-5 madde):
+## Sektör Büyüklüğü ve Büyümesi — rakam, CAGR, kaynak, yıl
+## Rekabet Dinamikleri — piyasayı kim kontrol ediyor, yoğunlaşma seviyesi
+## Önemli Riskler — regülasyon, teknoloji disrupsiyonu, döngüsellik
+## Büyüme Motorları — piyasayı gerçekte ne ileri itiyor?
+## Gizli Fırsat — bu sektörde çoğu oyuncunun henüz görmediği 1 stratejik açılım.
+## Giriş Önerisi — spesifik, dürüst, eyleme dönüştürülebilir.
+
+📎 Tam Porter Beş Kuvvet / SWOT istek üzerine mevcut.${COMMON_SUFFIX}`,
+
+  crosscheck: `🇹🇷 **DİL KURALI: Bu yanıtı tamamen Türkçe yaz.**
+
+Sen bir gerçek kontrolcüsünsün. Arama sonuçlarını kullanarak her iddiayı doğrula veya çürüt.
+
+Her iddia için:
+**İddia**: [iddia]
+**Karar**: ✅ DOĞRULANDI | ⚠️ KISMEN DOĞRU | ❌ ÇÜRÜTÜLDÜ | ❓ DOĞRULANABİLİR DEĞİL
+**En iyi destekleyen kaynak**: [kaynak + tarih]
+**En iyi çürüten kaynak**: [kaynak + tarih, yoksa "bulunamadı"]
+
+Sona genel güvenilirlik puanı ve en önemli düzeltmeyi ekle.${COMMON_SUFFIX}`,
 };
 
 export default async function handler(req) {
@@ -187,37 +246,43 @@ export default async function handler(req) {
 
   (async () => {
     try {
-      let searchResults = [];
-      let allSources = [];
+      let allResults = [];
       let searchCount = 0;
 
       if (tavilyKey) {
-        await writer.write(encoder.encode(`<!--STATUS:🔍 Searching the web...-->`));
-        searchResults = await search(message.trim(), tavilyKey, depth);
-        searchCount = 1;
+        await writer.write(encoder.encode(`<!--STATUS:🔍 Web'de aranıyor...-->`));
 
-        const seenUrls = new Set();
-        for (const r of searchResults) {
-          if (r.url && !seenUrls.has(r.url)) {
-            seenUrls.add(r.url);
-            allSources.push({
-              url: r.url,
-              title: r.title || r.url,
-              quality: classifySource(r.url),
-            });
-          }
+        if (depth === 'simple') {
+          // Single fast search, fewer results
+          allResults = await search(message.trim(), tavilyKey, 'simple', 6);
+          searchCount = 1;
+        } else {
+          // Two parallel searches: main + angle
+          await writer.write(encoder.encode(`<!--STATUS:🔭 Çoklu kaynak taranıyor...-->`));
+          const angleQuery = buildAngleQuery(message.trim(), tab);
+          const [primary, secondary] = await Promise.all([
+            search(message.trim(), tavilyKey, depth, depth === 'deep' ? 10 : 8),
+            search(angleQuery, tavilyKey, 'basic', 6),
+          ]);
+          allResults = dedupeResults([...primary, ...secondary]);
+          searchCount = 2;
         }
+
+        // Sort: trusted first, low quality last; then filter out low
+        allResults = sortByQuality(allResults).filter(r => classifySource(r.url) !== 'low');
       }
 
-      await writer.write(encoder.encode(`<!--STATUS:🤖 Analyzing...-->`));
+      await writer.write(encoder.encode(`<!--STATUS:🤖 Analiz yapılıyor...-->`));
 
-      const searchContext = tavilyKey && searchResults.length
-        ? `Current web search results for: "${message.trim()}"\n\n${formatResultsForAI(searchResults)}\n\n---\n\n`
+      const searchContext = tavilyKey && allResults.length
+        ? `Arama sonuçları ("${message.trim()}" için):\n\n${formatResultsForAI(allResults)}\n\n---\n\n`
         : '';
 
-      const userContent = searchContext + message.trim();
+      // Append language reminder to user message too
+      const userContent = searchContext + message.trim()
+        + '\n\n[Yanıtını tamamen Türkçe yaz. Başka dil kullanma.]';
 
-      const trimmedHistory = history.slice(-12).map(m => ({
+      const trimmedHistory = history.slice(-10).map(m => ({
         role: m.role,
         content: m.content,
       }));
@@ -236,14 +301,14 @@ export default async function handler(req) {
             { role: 'user', content: userContent },
           ],
           stream: true,
-          max_tokens: 1800,
-          temperature: 0.4,
+          max_tokens: 2800,
+          temperature: 0.45,
         }),
       });
 
       if (!groqRes.ok) {
         const errText = await groqRes.text();
-        await writer.write(encoder.encode(`\n\n**API error:** ${errText}`));
+        await writer.write(encoder.encode(`\n\n**API hatası:** ${errText}`));
         return;
       }
 
@@ -279,12 +344,17 @@ export default async function handler(req) {
         }
       }
 
-      const qualitySources = allSources.filter(s => s.quality !== 'low');
+      const allSources = allResults.map(r => ({
+        url: r.url,
+        title: r.title || r.url,
+        quality: classifySource(r.url),
+      }));
+
       const verifiedCount = allSources.filter(s => s.quality === 'trusted').length;
       const conflictingCount = (textAccumulator.match(/⚠️/g) || []).length;
 
       const payload = JSON.stringify({
-        sources: qualitySources,
+        sources: allSources,
         meta: {
           scanned: allSources.length,
           verified: verifiedCount,
@@ -297,7 +367,7 @@ export default async function handler(req) {
 
     } catch (err) {
       console.error("Stream error:", err);
-      await writer.write(encoder.encode(`\n\n**Error:** ${err.message}`));
+      await writer.write(encoder.encode(`\n\n**Hata:** ${err.message}`));
     } finally {
       await writer.close();
     }

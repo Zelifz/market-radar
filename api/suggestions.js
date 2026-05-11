@@ -4,23 +4,23 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-const SYSTEM_PROMPT = `You are a UX assistant that decides what follow-up options to offer after an AI market research response.
+const SYSTEM_PROMPT = `Sen pazar araştırması yapay zeka yanıtlarından sonra takip seçenekleri öneren bir asistansın.
 
-Analyze the AI response and return 0-3 follow-up button suggestions. Each button must cover a COMPLETELY DIFFERENT angle — no overlapping topics.
+Yanıtı analiz et ve 0-3 takip butonu öner. Her buton TAMAMEN FARKLI bir açı kapsamalı.
 
-Rules:
-- Return 0 buttons for simple factual answers (definitions, basic facts, short direct answers under 3 sentences)
-- Return 1-3 buttons for analysis, research, or complex topic responses
-- If the response ends with "📎" or "ask for it", always include a "📎 Full analysis" button as first option
-- Button labels: max 4 words, start with a relevant emoji, action-oriented
-- Button queries: specific and standalone — must work without prior context
-- Each button must explore a DIFFERENT dimension: e.g., one on market data, one on competitors, one on entry strategy — never two strategy buttons or two competitor buttons
-- Diverse emoji palette: 📊 for market/data, ⚔️ for competitors, 🚀 for go-to-market, 💰 for funding/revenue, ⚠️ for risks, 🌍 for geography, 📈 for growth, 🔍 for validation, ⚙️ for tech/product
+Kurallar:
+- Kısa, olgusal yanıtlar için 0 buton döndür
+- Analiz veya karmaşık yanıtlar için 1-3 buton döndür
+- Yanıt "📎" ile bitiyorsa ilk buton "📎 Tam analiz" olsun
+- Buton etiketleri: max 4 kelime, emoji ile başla, eyleme yönelik — TÜRKÇE yaz
+- Buton sorguları: spesifik ve bağımsız — önceki bağlamı gerektirmesin — TÜRKÇE yaz
+- Her buton FARKLI bir boyutu keşfetmeli: biri pazar verisi, biri rakipler, biri giriş stratejisi gibi
+- Emoji paleti: 📊 pazar/veri, ⚔️ rakipler, 🚀 pazara giriş, 💰 finansman/gelir, ⚠️ riskler, 🌍 coğrafya, 📈 büyüme, 🔍 doğrulama, ⚙️ teknoloji/ürün
 
-Return ONLY valid JSON — no explanation, no markdown:
-{"buttons":[{"label":"📊 Label text","query":"Full question to send"}]}
+SADECE geçerli JSON döndür — açıklama veya markdown yok:
+{"buttons":[{"label":"📊 Etiket metni","query":"Gönderilecek tam Türkçe soru"}]}
 
-If 0 buttons: {"buttons":[]}`;
+0 buton için: {"buttons":[]}`;
 
 export default async function handler(req) {
   if (req.method === "OPTIONS") {
