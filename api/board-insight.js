@@ -42,14 +42,14 @@ export default async function handler(req) {
           {
             role: "system",
             content:
-              "You are a strategic advisor. Analyze research board cards and give a concise synthesis in 3-4 sentences. Identify: the strongest pattern, the best opportunity, and the single most critical next action. Be direct and actionable. No bullet points — flowing prose only.",
+              "Sen stratejik bir danışmansın. Board kartlarını analiz et ve SADECE 3 madde döndür — fazlası değil. Her madde max 10 kelime, eyleme dönüştürülebilir, Türkçe. Format tam olarak şöyle olsun:\n• [madde 1]\n• [madde 2]\n• [madde 3]\nHiçbir giriş cümlesi, açıklama veya başlık ekleme. Sadece 3 madde.",
           },
           {
             role: "user",
             content: `Board cards:\n${cardsText}`,
           },
         ],
-        max_tokens: 300,
+        max_tokens: 120,
         temperature: 0.4,
       }),
     });
