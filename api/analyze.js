@@ -57,13 +57,24 @@ function classifyMode(message, history = []) {
     'what if', 'how might i', 'give me ideas', 'brainstorm',
   ];
 
-  // Discuss: opinion, future, meaning, perspective
+  // Discuss: opinion, future, meaning, perspective, feasibility/strategy questions
   const discussSignals = [
+    // Opinion / perspective
     'sence', 'ne dersin', 'düşüncen ne', 'fikrin ne', 'görüşün ne', 'yorumun ne',
+    // Future / evolution
     'nasıl gelişecek', 'nasıl değişecek', 'geleceği ne olacak', 'nereye gidecek',
+    // Why / meaning
     'neden böyle', 'neden oluyor', 'mantığı ne', 'önemi ne', 'anlamı ne',
     'felsefesi ne', 'tarihsel', 'toplumsal etkisi',
+    // Feasibility / strategic need — "can I do this / what do I need"
+    'neye ihtiyacım', 'ne gerekiyor', 'ne lazım', 'ne kadar zor',
+    'yapabilir miyim', 'geliştirebilir miyim', 'başarabilir miyim', 'girebilir miyim',
+    'mümkün mü', 'gerçekçi mi', 'mantıklı mı',
+    'nasıl girer', 'nasıl başlarım', 'nereden başlamalı', 'nasıl konumlan',
+    'stratejim ne', 'yol haritam ne', 'benim için ne', 'bizim için ne',
+    // English equivalents
     'what do you think', 'your opinion', 'your view', 'why is this', 'how will this evolve',
+    'what do i need', 'can i', 'is it possible', 'how do i start', 'is it realistic',
   ];
 
   if (brainstormSignals.some(k => lower.includes(k))) return 'brainstorm';

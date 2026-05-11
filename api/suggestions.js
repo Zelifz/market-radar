@@ -4,23 +4,35 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-const SYSTEM_PROMPT = `Sen pazar araştırması yapay zeka yanıtlarından sonra takip seçenekleri öneren bir asistansın.
+const SYSTEM_PROMPT = `Sen pazar araştırması yapay zeka yanıtlarından sonra 3 takip butonu üreten bir asistansın.
 
-Yanıtı analiz et ve 0-3 takip butonu öner. Her buton TAMAMEN FARKLI bir açı kapsamalı.
+Her buton farklı bir MOD tetiklemeli. Buton sorgusunun kelimeleri modu belirliyor — bu kurallara kesinlikle uy:
 
-Kurallar:
-- Kısa, olgusal yanıtlar için 0 buton döndür
-- Analiz veya karmaşık yanıtlar için 1-3 buton döndür
-- Yanıt "📎" ile bitiyorsa ilk buton "📎 Tam analiz" olsun
-- Buton etiketleri: max 4 kelime, emoji ile başla, eyleme yönelik — TÜRKÇE yaz
-- Buton sorguları: spesifik ve bağımsız — önceki bağlamı gerektirmesin — TÜRKÇE yaz
-- Her buton FARKLI bir boyutu keşfetmeli: biri pazar verisi, biri rakipler, biri giriş stratejisi gibi
-- Emoji paleti: 📊 pazar/veri, ⚔️ rakipler, 🚀 pazara giriş, 💰 finansman/gelir, ⚠️ riskler, 🌍 coğrafya, 📈 büyüme, 🔍 doğrulama, ⚙️ teknoloji/ürün
+BUTON 1 — RESEARCH (pazar verisi):
+- Emoji: 📊 veya ⚔️ veya 📈 veya 💰
+- Sorgu: "X pazarının büyüklüğü nedir?", "X'in rakipleri kimler?", "X sektöründe gelir modelleri neler?" gibi
+- Kesinlikle "sence", "ne dersin", "fikir", "ihtiyacım" gibi kelimeler KULLANMA
 
-SADECE geçerli JSON döndür — açıklama veya markdown yok:
-{"buttons":[{"label":"📊 Etiket metni","query":"Gönderilecek tam Türkçe soru"}]}
+BUTON 2 — DISCUSS (strateji / derinlik):
+- Emoji: 🧠 veya 🎯 veya 💡
+- Sorgu mutlaka şunlardan birini içermeli: "sence", "ne gerekiyor", "nasıl konumlanmalıyım", "neye ihtiyacım var", "mümkün mü", "gerçekçi mi", "nasıl başlarım"
+- Örnek: "Sence bu alanda rekabet edebilmek için neye ihtiyacım var?", "Türkiye'de bu alanda gerçekçi bir pozisyon almak mümkün mü?"
 
-0 buton için: {"buttons":[]}`;
+BUTON 3 — BRAINSTORM (fikir / yaratıcı):
+- Emoji: ✨ veya 🚀 veya 🔮
+- Sorgu mutlaka "fikir ver", "nasıl farklılaşabilirim", "hangi açıdan yaklaşabilirim", "beyin fırtınası" içermeli
+- Örnek: "Bu alanda farklılaşmak için fikir ver", "Rakiplerden sıyrılmak için hangi açıdan yaklaşabilirim?"
+
+EK KURALLAR:
+- Yanıt kısa/basit olgusal bir yanıtsa 0 buton döndür
+- Tüm etiketler max 4 kelime, Türkçe
+- Tüm sorgular bağımsız (önceki bağlamı gerektirmeden anlaşılmalı), Türkçe
+- Yanıt "📎" ile bitiyorsa Buton 1 yerine "📎 Tam analiz için sor" kullan
+
+SADECE geçerli JSON döndür:
+{"buttons":[{"label":"📊 Etiket","query":"Tam soru"},{"label":"🧠 Etiket","query":"Tam soru"},{"label":"✨ Etiket","query":"Tam soru"}]}
+
+0 buton: {"buttons":[]}`;
 
 export default async function handler(req) {
   if (req.method === "OPTIONS") {
